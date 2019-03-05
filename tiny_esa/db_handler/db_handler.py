@@ -44,7 +44,7 @@ class ProjectDatabase(object):
         self.c.execute('''CREATE TABLE person
                      (person_id INTEGER PRIMARY KEY autoincrement, address_id INTEGER NOT NULL,
                      last_name text NOT NULL, first_name text NOT NULL, gsm text NOT  NULL, mail NOT  NULL,
-                     phone text NOT  NULL, remark text NOT NULL,
+                     phone text NOT  NULL, timestamp text NOT NULL, remark text NOT NULL,
                      FOREIGN KEY(address_id) REFERENCES address(address_id))''')
                      
         self.c.execute('''CREATE TABLE company (address_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
@@ -54,11 +54,11 @@ class ProjectDatabase(object):
                     FOREIGN KEY(user_id) REFERENCES user(user_id))''')
                     
         self.c.execute('''CREATE TABLE user (user_id INTEGER PRIMARY KEY autoincrement, person_id INTEGER NOT NULL,
-                     timestamp text NOT NULL, password text NOT NULL,
+                     password text NOT NULL,
                      FOREIGN KEY(person_id) REFERENCES person(person_id))''')
                      
         self.c.execute('''CREATE TABLE customer (customer_id INTEGER PRIMARY KEY autoincrement,
-                     person_id INTEGER NOT NULL, timestamp text NOT NULL, evalutation text NOT NULL,
+                     person_id INTEGER NOT NULL, evaluation text NOT NULL,
                      FOREIGN KEY(person_id) REFERENCES person(person_id))''')
                      
         self.c.execute('''CREATE TABLE bill(bill_id INTEGER PRIMARY KEY autoincrement, customer_id INTEGER NOT NULL,
@@ -107,7 +107,7 @@ class ProjectDatabase(object):
         if person.get_address().get_id() < 0:
             self.add_address(person.get_address())
 
-        self.c.execute("INSERT INTO person(address_id, last_name, first_name, gsm, phone, mail, remark) VALUES(" +
+        self.c.execute("INSERT INTO person(address_id, last_name, first_name, gsm, phone, mail, timestamp,remark) VALUES(" +
                        person.__str__() + ")")
         self.conn.commit()
         person.id = int(self.get_person(row='max(person_id)')[0][0])
@@ -128,8 +128,9 @@ class ProjectDatabase(object):
             self.update_address(person.get_address())
             self.c.execute("UPDATE person SET first_name = '" + person.get_first_name()+"', last_name = '" +
                            person.get_last_name() + "', gsm = '" + person.get_gsm() + "', phone = '" +
-                           person.get_phone() + "', mail = '" + person.get_mail() + "', remark = '" +
-                           person.get_remark() + "' WHERE person_id = " + str(person.get_id()))
+                           person.get_phone() + "', mail = '" + person.get_mail() +"" + "', timestamp ='" +
+                           person.get_timestamp()+ "', remark = '" + person.get_remark() + "' WHERE person_id = "
+                           + str(person.get_id()))
             self.conn.commit()
 
         else:
@@ -138,27 +139,54 @@ class ProjectDatabase(object):
     def add_user(self, user):
         if user.get_person().get_id() < 0:
             self.add_person(user.get_person())
-        self.c.execute("INSERT INTO user(person_id, timestamp, password) VALUES("+user.__str__()+")")
+        self.c.execute("INSERT INTO user(person_id, password) VALUES("+user.__str__()+")")
         self.conn.commit()
         user.id = int(self.get_user(row='max(user_id)')[0][0])
 
-    def get_user(self, row="*", condition = None):
+    def get_user(self, row="*", condition=None):
         return self.get_object("user", row, condition)
 
     def update_user(self, user):
         if user.get_id() > 0:
             self.update_person(user.get_person())
-            self.c.execute("UPDATE user SET person_id = '" + str(user.get_person().get_id())+"', timestamp = '" +
-                           user.get_timestamp() + "', password = '" + user.get_password() +
-                           "' WHERE user_id = " + str(user.get_id()))
+            self.c.execute("UPDATE user SET person_id = '" + str(user.get_person().get_id()) + "', password = '"
+                           + user.get_password() + "' WHERE user_id = " + str(user.get_id()))
             self.conn.commit()
         else:
             print("ERROOOOOR update user sans ID")
 
-    def remove_user(self,user):
+    def remove_user(self, user):
         if user.get_id() > 0:
             self.c.execute("DELETE FROM user WHERE user_id = " + str(user.get_id()))
             self.conn.commit()
             self.remove_person(user.get_person())
         else:
             print("EROOOR remove user")
+
+    def add_customer(self, customer):
+        if customer.get_person().get_id() < 0:
+            self.add_person(customer.get_person())
+        self.c.execute("INSERT INTO customer(person_id, evaluation) VALUES(" + customer.__str__() + ")")
+        self.conn.commit()
+        customer.id = int(self.get_customer(row='max(customer_id)')[0][0])
+
+    def get_customer(self, row="*", condition=None):
+        return self.get_object("customer", row, condition)
+
+    def update_customer(self, customer):
+        if customer.get_id() > 0:
+            self.update_person(customer.get_person())
+            self.c.execute("UPDATE customer SET person_id = " + str(customer.get_person().get_id())
+                           + ", evaluation = '" + customer.get_evaluation()
+                           + "' WHERE customer_id = " + str(customer.get_id()))
+            self.conn.commit()
+        else:
+            print("ERROOOOOR update customer sans ID")
+
+    def remove_customer(self, customer):
+        if customer.get_id() > 0:
+            self.c.execute("DELETE FROM customer WHERE customer_id = " + str(customer.get_id()))
+            self.conn.commit()
+            self.remove_person(customer.get_person())
+        else:
+            print("EROOOR remove customer")

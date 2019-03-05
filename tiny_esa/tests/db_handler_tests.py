@@ -45,10 +45,10 @@ class MyTestCase(unittest.TestCase):
 
     def test_db_person(self):
         address = models.Address("street", "number", "postal_code", "city")
-        test_person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "remark")
+        test_person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "12345", "remark")
         self.db.add_person(test_person)
         self.assertEqual(self.db.get_address(), [(1, 'street', 'number', 'postal_code', 'city')])
-        self.assertEqual(self.db.get_person(), [(1, 1, 'last_name', 'first_name', 'gsm', 'mail', 'phone', 'remark')])
+        self.assertEqual(self.db.get_person(), [(1, 1, 'last_name', 'first_name', 'gsm', 'mail', 'phone', '12345', "remark")])
         test_person.set_last_name("ln")
         test_person.set_first_name("fn")
         test_person.set_gsm("GSM")
@@ -56,29 +56,56 @@ class MyTestCase(unittest.TestCase):
         test_person.set_mail("email")
         test_person.set_remark("rmk")
         self.db.update_person(test_person)
-        self.assertEqual(self.db.get_person(), [(1, 1, 'ln', 'fn', 'GSM', 'email', 'PHONE', 'rmk')])
+        self.assertEqual(self.db.get_person(), [(1, 1, 'ln', 'fn', 'GSM', 'email', 'PHONE', "12345",'rmk')])
         self.db.remove_person(test_person)
         self.assertEqual(self.db.get_address(), [])
         self.assertEqual(self.db.get_person(), [])
 
     def test_db_user(self):
         address = models.Address("street", "number", "postal_code", "city")
-        person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "remark")
-        user = models.User(person, "password", "12345")
+        person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "12345","remark")
+        user = models.User(person, "password")
         self.db.add_user(user)
         self.assertEqual(self.db.get_address(), [(1, 'street', 'number', 'postal_code', 'city')])
-        self.assertEqual(self.db.get_person(), [(1, 1, 'last_name', 'first_name', 'gsm', 'mail', 'phone', 'remark')])
+        self.assertEqual(self.db.get_person(), [(1, 1, 'last_name', 'first_name', 'gsm', 'mail', 'phone', "12345",'remark')])
         tmp = self.db.get_user()
-        sol = [(1, 1, "12345", 'edd1202f0851b877b47f11d727d586ccc967192c6f295518ff26ccb85f97e9a1')]
+        sol = [(1, 1, 'edd1202f0851b877b47f11d727d586ccc967192c6f295518ff26ccb85f97e9a1')]
         for i in range(len(tmp[0])):
             self.assertEqual(tmp[0][i], sol[0][i])
 
         user.set_password("Password1")
         self.db.update_user(user)
         tmp = self.db.get_user()
-        sol = [(1, 1, "12345", '18a196db9ead333356061b365ec9adbb272ae55e4cbae0253dff0e4726cb0dc1')]
+        sol = [(1, 1, '18a196db9ead333356061b365ec9adbb272ae55e4cbae0253dff0e4726cb0dc1')]
         for i in range(len(tmp[0])):
             self.assertEqual(tmp[0][i], sol[0][i])
+        self.db.remove_user(user)
+        self.assertEqual(self.db.get_address(), [])
+        self.assertEqual(self.db.get_person(), [])
+        self.assertEqual(self.db.get_user(), [])
+
+    def test_db_customer(self):
+        address = models.Address("street", "number", "postal_code", "city")
+        person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "12345","remark")
+        customer = models.Customer(person, "evaluation")
+        self.db.add_customer(customer)
+        self.assertEqual(self.db.get_address(), [(1, 'street', 'number', 'postal_code', 'city')])
+        self.assertEqual(self.db.get_person(), [(1, 1, 'last_name', 'first_name', 'gsm', 'mail', 'phone', "12345", 'remark')])
+        tmp = self.db.get_customer()
+        sol = [(1, 1, 'evaluation')]
+        for i in range(len(tmp[0])):
+            self.assertEqual(tmp[0][i], sol[0][i])
+
+        customer.set_evaluation("EVAL")
+        self.db.update_customer(customer)
+        tmp = self.db.get_customer()
+        sol = [(1, 1, 'EVAL')]
+        for i in range(len(tmp[0])):
+            self.assertEqual(tmp[0][i], sol[0][i])
+        self.db.remove_customer(customer)
+        self.assertEqual(self.db.get_address(), [])
+        self.assertEqual(self.db.get_person(), [])
+        self.assertEqual(self.db.get_customer(), [])
 
 
 if __name__ == '__main__':

@@ -46,18 +46,20 @@ class AddressTestCase(unittest.TestCase):
 
     def test_creation_person(self):
         address = models.Address("street", "number", "postal_code", "city")
-        test_person = models.Person(address,"last_name","first_name", "gsm", "phone", "mail", "remark")
+        test_person = models.Person(address,"last_name","first_name", "gsm", "phone", "mail","timestamp", "remark")
         self.assertEqual(test_person.get_last_name(), "last_name")
         self.assertEqual(test_person.get_first_name(), "first_name")
         self.assertEqual(test_person.get_gsm(), "gsm")
         self.assertEqual(test_person.get_phone(), "phone")
         self.assertEqual(test_person.get_mail(), "mail")
         self.assertEqual(test_person.get_remark(), "remark")
-        self.assertEqual(test_person.__str__(), "-1, 'last_name', 'first_name', 'gsm', 'phone', 'mail', 'remark'")
+        self.assertEqual(test_person.get_timestamp(), "timestamp")
+        self.assertEqual(test_person.__str__(), "-1, 'last_name', 'first_name', 'gsm', 'phone', 'mail', 'timestamp',"
+                                                " 'remark'")
 
     def test_update_person(self):
         address = models.Address("street", "number", "postal_code", "city")
-        test_person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "remark")
+        test_person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "timestamp", "remark")
         test_person.set_last_name("ln")
         self.assertEqual(test_person.get_last_name(), "ln")
         test_person.set_first_name("fn")
@@ -73,9 +75,8 @@ class AddressTestCase(unittest.TestCase):
 
     def test_creation_user(self):
         address = models.Address("street", "number", "postal_code", "city")
-        person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "remark")
-        user = models.User(person,"password", "12345")
-        self.assertEqual(user.get_timestamp(), "12345")
+        person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "12345", "remark")
+        user = models.User(person,"password")
         self.assertEqual(user.get_password(), pw.encrypt("password", "12345"))
         self.assertTrue(user.compare_password("password"))
         user.set_password("Password1")

@@ -63,7 +63,7 @@ class Address(object):
 
 
 class Person(object):
-    def __init__(self, address, last_name, first_name, gsm, phone, mail, remark=''):
+    def __init__(self, address, last_name, first_name, gsm, phone, mail, timestamp,remark=''):
         self.address = address
         self.last_name = last_name
         self.first_name = first_name
@@ -71,11 +71,13 @@ class Person(object):
         self.phone = phone
         self.mail = mail
         self.remark = remark
+        self.timestamp = str(timestamp)
         self.id = -1
 
     def __str__(self):
         return str(self.address.get_id()) + ", '" + self.last_name + "', '" + self.first_name + "', '" +\
-               self.gsm + "', '" + self.phone + "', '" + self.mail + "', '" + self.remark + "'"
+               self.gsm + "', '" + self.phone + "', '" + self.mail + "', '" + self.timestamp + "', '" + self.remark \
+               + "'"
         
     def get_address(self):
         return self.address
@@ -125,12 +127,14 @@ class Person(object):
     def set_remark(self, remark):
         self.remark = remark
 
+    def get_timestamp(self):
+        return self.timestamp
 
-class User(Person):
-    def __init__(self, person, password, timestamp):
+
+class User(object):
+    def __init__(self, person, password):
         self.person = person
-        self.password = pw.encrypt(password, str(timestamp))
-        self.timestamp = str(timestamp)
+        self.password = pw.encrypt(password, str(self.person.get_timestamp()))
         self.id = -1
 
     def set_id(self, my_id):
@@ -149,13 +153,38 @@ class User(Person):
         return self.password
 
     def set_password(self, password):
-        self.password = pw.encrypt(password, self.timestamp)
-
-    def get_timestamp(self):
-        return self.timestamp
+        self.password = pw.encrypt(password, self.person.get_timestamp())
 
     def __str__(self):
-        return str(self.person.get_id()) + ", '" + self.timestamp + "', '" + self.password + "'"
+        return str(self.person.get_id()) + ", '" + self.password + "'"
 
     def compare_password(self, password):
-        return self.password == pw.encrypt(password, self.timestamp)
+        return self.password == pw.encrypt(password, self.person.get_timestamp())
+
+
+class Customer(object):
+    def __init__(self, person, evaluation):
+        self.person = person
+        self.evaluation = evaluation
+        self.id = -1
+
+    def set_id(self, my_id):
+        self.id = my_id
+
+    def get_id(self):
+        return self.id
+
+    def get_person(self):
+        return self.person
+
+    def set_person(self, person):
+        self.person = person
+
+    def get_evaluation(self):
+        return self.evaluation
+
+    def set_evaluation(self, evaluation):
+        self.evaluation = evaluation
+
+    def __str__(self):
+        return str(self.person.get_id()) + ", '" + self.evaluation + "'"
