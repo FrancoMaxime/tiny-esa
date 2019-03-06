@@ -47,9 +47,9 @@ class ProjectDatabase(object):
                      phone text NOT  NULL, timestamp text NOT NULL, remark text NOT NULL,
                      FOREIGN KEY(address_id) REFERENCES address(address_id))''')
                      
-        self.c.execute('''CREATE TABLE company (address_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
-                    gsm text NOT NULL, phone text NOT NULL, mail text NOT NULL, tva_number text NOT NULL,
-                    iban text NOT NULL, bic text NOT NULL, name text NOT NULL,
+        self.c.execute('''CREATE TABLE company (company_id INTEGER PRIMARY KEY autoincrement,address_id INTEGER NOT NULL
+                    ,user_id INTEGER NOT NULL, gsm text NOT NULL, phone text NOT NULL, mail text NOT NULL,
+                    tva_number text NOT NULL, iban text NOT NULL, bic text NOT NULL, name text NOT NULL,
                     FOREIGN KEY(address_id) REFERENCES address(address_id),
                     FOREIGN KEY(user_id) REFERENCES user(user_id))''')
                     
@@ -88,24 +88,24 @@ class ProjectDatabase(object):
         return self.get_object("address", row, condition)
 
     def update_address(self,address):
-        if address.get_id() > 0:
-            self.c.execute("UPDATE address SET street = '" + address.get_street()+"', number = '" +
-                           address.get_number() + "', postal_code = '" + address.get_postal_code() + "', city = '" +
-                           address.get_city() + "' WHERE address_id = " + str(address.get_id()))
+        if address.id > 0:
+            self.c.execute("UPDATE address SET street = '" + address.street+"', number = '" +
+                           address.number + "', postal_code = '" + address.postal_code + "', city = '" +
+                           address.city + "' WHERE address_id = " + str(address.id))
             self.conn.commit()
         else:
             print("ERROOOOOR update address sans ID")
         
     def remove_address(self, address):
-        if address.get_id() > 0:
-            self.c.execute("DELETE FROM address WHERE address_id = " + str(address.get_id()))
+        if address.id > 0:
+            self.c.execute("DELETE FROM address WHERE address_id = " + str(address.id))
             self.conn.commit()
         else:
             print("ERROOOOOR remove address sans ID")
 
     def add_person(self, person):
-        if person.get_address().get_id() < 0:
-            self.add_address(person.get_address())
+        if person.address.id < 0:
+            self.add_address(person.address)
 
         self.c.execute("INSERT INTO person(address_id, last_name, first_name, gsm, phone, mail, timestamp,remark) VALUES(" +
                        person.__str__() + ")")
@@ -113,10 +113,10 @@ class ProjectDatabase(object):
         person.id = int(self.get_person(row='max(person_id)')[0][0])
 
     def remove_person(self, person):
-        if person.get_id() > 0:
-            self.c.execute("DELETE FROM person WHERE person_id = " + str(person.get_id()))
+        if person.id > 0:
+            self.c.execute("DELETE FROM person WHERE person_id = " + str(person.id))
             self.conn.commit()
-            self.remove_address(person.get_address())
+            self.remove_address(person.address)
         else:
             print("EROOOR remove person")
 
@@ -124,21 +124,21 @@ class ProjectDatabase(object):
         return self.get_object("person", row, condition)
 
     def update_person(self, person):
-        if person.get_id() > 0:
-            self.update_address(person.get_address())
-            self.c.execute("UPDATE person SET first_name = '" + person.get_first_name()+"', last_name = '" +
-                           person.get_last_name() + "', gsm = '" + person.get_gsm() + "', phone = '" +
-                           person.get_phone() + "', mail = '" + person.get_mail() +"" + "', timestamp ='" +
-                           person.get_timestamp()+ "', remark = '" + person.get_remark() + "' WHERE person_id = "
-                           + str(person.get_id()))
+        if person.id > 0:
+            self.update_address(person.address)
+            self.c.execute("UPDATE person SET first_name = '" + person.first_name+"', last_name = '" +
+                           person.last_name + "', gsm = '" + person.gsm + "', phone = '" +
+                           person.phone + "', mail = '" + person.mail + "', timestamp ='" +
+                           person.timestamp + "', remark = '" + person.remark + "' WHERE person_id = "
+                           + str(person.id))
             self.conn.commit()
 
         else:
             print("ERROOOOOR update person sans ID")
 
     def add_user(self, user):
-        if user.get_person().get_id() < 0:
-            self.add_person(user.get_person())
+        if user.person.id < 0:
+            self.add_person(user.person)
         self.c.execute("INSERT INTO user(person_id, password) VALUES("+user.__str__()+")")
         self.conn.commit()
         user.id = int(self.get_user(row='max(user_id)')[0][0])
@@ -147,25 +147,25 @@ class ProjectDatabase(object):
         return self.get_object("user", row, condition)
 
     def update_user(self, user):
-        if user.get_id() > 0:
-            self.update_person(user.get_person())
-            self.c.execute("UPDATE user SET person_id = '" + str(user.get_person().get_id()) + "', password = '"
-                           + user.get_password() + "' WHERE user_id = " + str(user.get_id()))
+        if user.id > 0:
+            self.update_person(user.person)
+            self.c.execute("UPDATE user SET person_id = '" + str(user.person.id) + "', password = '"
+                           + user.password + "' WHERE user_id = " + str(user.id))
             self.conn.commit()
         else:
             print("ERROOOOOR update user sans ID")
 
     def remove_user(self, user):
-        if user.get_id() > 0:
-            self.c.execute("DELETE FROM user WHERE user_id = " + str(user.get_id()))
+        if user.id > 0:
+            self.c.execute("DELETE FROM user WHERE user_id = " + str(user.id))
             self.conn.commit()
-            self.remove_person(user.get_person())
+            self.remove_person(user.person)
         else:
             print("EROOOR remove user")
 
     def add_customer(self, customer):
-        if customer.get_person().get_id() < 0:
-            self.add_person(customer.get_person())
+        if customer.person.id < 0:
+            self.add_person(customer.person)
         self.c.execute("INSERT INTO customer(person_id, evaluation) VALUES(" + customer.__str__() + ")")
         self.conn.commit()
         customer.id = int(self.get_customer(row='max(customer_id)')[0][0])
@@ -174,19 +174,53 @@ class ProjectDatabase(object):
         return self.get_object("customer", row, condition)
 
     def update_customer(self, customer):
-        if customer.get_id() > 0:
-            self.update_person(customer.get_person())
-            self.c.execute("UPDATE customer SET person_id = " + str(customer.get_person().get_id())
-                           + ", evaluation = '" + customer.get_evaluation()
-                           + "' WHERE customer_id = " + str(customer.get_id()))
+        if customer.id > 0:
+            self.update_person(customer.person)
+            self.c.execute("UPDATE customer SET person_id = " + str(customer.person.id)
+                           + ", evaluation = '" + customer.evaluation + "' WHERE customer_id = " + str(customer.id))
             self.conn.commit()
         else:
             print("ERROOOOOR update customer sans ID")
 
     def remove_customer(self, customer):
-        if customer.get_id() > 0:
-            self.c.execute("DELETE FROM customer WHERE customer_id = " + str(customer.get_id()))
+        if customer.id > 0:
+            self.c.execute("DELETE FROM customer WHERE customer_id = " + str(customer.id))
             self.conn.commit()
-            self.remove_person(customer.get_person())
+            self.remove_person(customer.person)
         else:
             print("EROOOR remove customer")
+
+    def add_company(self, company):
+        if company.id < 0 :
+            self.add_address(company.address)
+            self.add_user(company.user)
+        self.c.execute("INSERT INTO company(address_id, user_id, gsm,phone, mail, tva_number, iban, bic, name) "
+                       + "VALUES (" + company.__str__() + ")")
+        self.conn.commit()
+        company.id = int(self.get_company(row='max(company_id)')[0][0])
+
+    def get_company(self, row="*", condition=None):
+        return self.get_object("company", row, condition)
+
+    def update_company(self, company):
+        if company.id > 0:
+            self.update_address(company.address)
+            self.update_user(company.user)
+            self.c.execute("UPDATE company SET address_id = " + str(company.address.id) + ", user_id = "
+                           + str(company.user.id) + ", gsm = '" + company.gsm + "', phone = '" +
+                           company.phone + "', mail = '" + company.mail + "', tva_number = '" +
+                           company.tva_number + "', iban = '" + company.iban + "', bic = '" +
+                           company.bic + "', name = '" + company.name + "'")
+            self.conn.commit()
+        else:
+            print("ERROOOOR update company")
+
+    def remove_company(self, company):
+        if company.id > 0:
+            self.c.execute("DELETE FROM company WHERE company_id = " + str(company.id))
+            self.conn.commit()
+            self.remove_user(company.user)
+            self.remove_address(company.address)
+
+        else:
+            print("ERROOOR REMOVE company")

@@ -27,61 +27,100 @@ class AddressTestCase(unittest.TestCase):
 
     def test_creation_address(self):
         test_address = models.Address("street", "number", "postal_code", "city")
-        self.assertEqual(test_address.get_city(), "city")
-        self.assertEqual(test_address.get_number(), "number")
-        self.assertEqual(test_address.get_street(), "street")
-        self.assertEqual(test_address.get_postal_code(), "postal_code")
+
+        self.assertEqual(test_address.city, "city")
+        self.assertEqual(test_address.number, "number")
+        self.assertEqual(test_address.street, "street")
+        self.assertEqual(test_address.postal_code, "postal_code")
+        self.assertEqual(test_address.id, -1)
         self.assertEqual(test_address.__str__(), "'street', 'number', 'postal_code', 'city'")
 
     def test_update_address(self):
         test_address = models.Address("street", "number", "postal_code", "city")
-        test_address.set_street("new_street")
-        self.assertEqual(test_address.get_street(), "new_street")
-        test_address.set_city("new_city")
-        self.assertEqual(test_address.get_city(), "new_city")
-        test_address.set_number("new_number")
-        self.assertEqual(test_address.get_number(), "new_number")
-        test_address.set_postal_code("cp")
-        self.assertEqual(test_address.get_postal_code(), "cp")
+        test_address.street = "new_street"
+        self.assertEqual(test_address.street, "new_street")
+        test_address.city = "new_city"
+        self.assertEqual(test_address.city, "new_city")
+        test_address.number = "new_number"
+        self.assertEqual(test_address.number, "new_number")
+        test_address.postal_code = "cp"
+        self.assertEqual(test_address.postal_code, "cp")
 
     def test_creation_person(self):
         address = models.Address("street", "number", "postal_code", "city")
         test_person = models.Person(address,"last_name","first_name", "gsm", "phone", "mail","timestamp", "remark")
-        self.assertEqual(test_person.get_last_name(), "last_name")
-        self.assertEqual(test_person.get_first_name(), "first_name")
-        self.assertEqual(test_person.get_gsm(), "gsm")
-        self.assertEqual(test_person.get_phone(), "phone")
-        self.assertEqual(test_person.get_mail(), "mail")
-        self.assertEqual(test_person.get_remark(), "remark")
-        self.assertEqual(test_person.get_timestamp(), "timestamp")
+        self.assertEqual(test_person.last_name, "last_name")
+        self.assertEqual(test_person.first_name, "first_name")
+        self.assertEqual(test_person.gsm, "gsm")
+        self.assertEqual(test_person.phone, "phone")
+        self.assertEqual(test_person.mail, "mail")
+        self.assertEqual(test_person.remark, "remark")
+        self.assertEqual(test_person.timestamp, "timestamp")
         self.assertEqual(test_person.__str__(), "-1, 'last_name', 'first_name', 'gsm', 'phone', 'mail', 'timestamp',"
                                                 " 'remark'")
 
     def test_update_person(self):
         address = models.Address("street", "number", "postal_code", "city")
         test_person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "timestamp", "remark")
-        test_person.set_last_name("ln")
-        self.assertEqual(test_person.get_last_name(), "ln")
-        test_person.set_first_name("fn")
-        self.assertEqual(test_person.get_first_name(), "fn")
-        test_person.set_gsm("GSM")
-        self.assertEqual(test_person.get_gsm(), "GSM")
-        test_person.set_phone("PHONE")
-        self.assertEqual(test_person.get_phone(), "PHONE")
-        test_person.set_mail("email")
-        self.assertEqual(test_person.get_mail(), "email")
-        test_person.set_remark("rmk")
-        self.assertEqual(test_person.get_remark(), "rmk")
+        test_person.last_name = "ln"
+        self.assertEqual(test_person.last_name, "ln")
+        test_person.first_name = "fn"
+        self.assertEqual(test_person.first_name, "fn")
+        test_person.gsm = "GSM"
+        self.assertEqual(test_person.gsm, "GSM")
+        test_person.phone = "PHONE"
+        self.assertEqual(test_person.phone, "PHONE")
+        test_person.mail = "email"
+        self.assertEqual(test_person.mail, "email")
+        test_person.remark = "rmk"
+        self.assertEqual(test_person.remark, "rmk")
 
     def test_creation_user(self):
         address = models.Address("street", "number", "postal_code", "city")
         person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "12345", "remark")
-        user = models.User(person,"password")
-        self.assertEqual(user.get_password(), pw.encrypt("password", "12345"))
+        user = models.User(person, "password")
+        self.assertEqual(user.password, pw.encrypt("password", user.person.timestamp))
         self.assertTrue(user.compare_password("password"))
-        user.set_password("Password1")
+        user.password = "Password1"
         self.assertTrue(user.compare_password("Password1"))
         self.assertFalse(user.compare_password("password1"))
+
+    def test_creation_company(self):
+        address_u = models.Address("street", "number", "postal_code", "city")
+        address_c = models.Address("street", "number", "postal_code", "city")
+        person = models.Person(address_u, "last_name", "first_name", "gsm", "phone", "mail", "12345", "remark")
+        user = models.User(person, "password")
+        company = models.Company(address_c, user, "gsm", "phone", "mail", "tva_number", "iban", "bic", "name")
+        self.assertEqual(company.name, "name")
+        self.assertEqual(company.bic, "bic")
+        self.assertEqual(company.iban, "iban")
+        self.assertEqual(company.tva_number, "tva_number")
+        self.assertEqual(company.mail, "mail")
+        self.assertEqual(company.phone, "phone")
+        self.assertEqual(company.gsm, "gsm")
+
+    def test_update_company(self):
+        address_u = models.Address("street", "number", "postal_code", "city")
+        address_c = models.Address("street", "number", "postal_code", "city")
+        person = models.Person(address_u, "last_name", "first_name", "gsm", "phone", "mail", "12345", "remark")
+        user = models.User(person, "password")
+        company = models.Company(address_c, user, "gsm", "phone", "mail", "tva_number", "iban", "bic", "name")
+        company.name = "uname"
+        self.assertEqual(company.name, "uname")
+        company.bic = "ubic"
+        self.assertEqual(company.bic, "ubic")
+        company.iban = "uiban"
+        self.assertEqual(company.iban, "uiban")
+        company.tva_number = "utva"
+        self.assertEqual(company.tva_number, "utva")
+        company.mail = "umail"
+        self.assertEqual(company.mail, "umail")
+        company.phone = "uphone"
+        self.assertEqual(company.phone, "uphone")
+        company.gsm = "ugsm"
+        self.assertEqual(company.gsm, "ugsm")
+        company.address.street = "test_CP_company"
+        self.assertEqual(company.address.street, "test_CP_company")
 
 
 if __name__ == '__main__':

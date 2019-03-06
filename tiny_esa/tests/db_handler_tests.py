@@ -36,7 +36,7 @@ class MyTestCase(unittest.TestCase):
         self.db.add_address(address)
         self.assertEqual(self.db.get_address(), [(1, 'street', 'number', 'postal_code', 'city')])
 
-        address.set_postal_code("cp")
+        address.postal_code = "cp"
         self.db.update_address(address)
         self.assertEqual(self.db.get_address(), [(1, 'street', 'number', 'cp', 'city')])
 
@@ -49,14 +49,14 @@ class MyTestCase(unittest.TestCase):
         self.db.add_person(test_person)
         self.assertEqual(self.db.get_address(), [(1, 'street', 'number', 'postal_code', 'city')])
         self.assertEqual(self.db.get_person(), [(1, 1, 'last_name', 'first_name', 'gsm', 'mail', 'phone', '12345', "remark")])
-        test_person.set_last_name("ln")
-        test_person.set_first_name("fn")
-        test_person.set_gsm("GSM")
-        test_person.set_phone("PHONE")
-        test_person.set_mail("email")
-        test_person.set_remark("rmk")
+        test_person.last_name = "ln"
+        test_person.first_name = "fn"
+        test_person.gsm = "GSM"
+        test_person.phone = "PHONE"
+        test_person.mail = "email"
+        test_person.remark = "rmk"
         self.db.update_person(test_person)
-        self.assertEqual(self.db.get_person(), [(1, 1, 'ln', 'fn', 'GSM', 'email', 'PHONE', "12345",'rmk')])
+        self.assertEqual(self.db.get_person(), [(1, 1, 'ln', 'fn', 'GSM', 'email', 'PHONE', "12345", 'rmk')])
         self.db.remove_person(test_person)
         self.assertEqual(self.db.get_address(), [])
         self.assertEqual(self.db.get_person(), [])
@@ -73,7 +73,7 @@ class MyTestCase(unittest.TestCase):
         for i in range(len(tmp[0])):
             self.assertEqual(tmp[0][i], sol[0][i])
 
-        user.set_password("Password1")
+        user.password = "Password1"
         self.db.update_user(user)
         tmp = self.db.get_user()
         sol = [(1, 1, '18a196db9ead333356061b365ec9adbb272ae55e4cbae0253dff0e4726cb0dc1')]
@@ -86,7 +86,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_db_customer(self):
         address = models.Address("street", "number", "postal_code", "city")
-        person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "12345","remark")
+        person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "12345", "remark")
         customer = models.Customer(person, "evaluation")
         self.db.add_customer(customer)
         self.assertEqual(self.db.get_address(), [(1, 'street', 'number', 'postal_code', 'city')])
@@ -96,7 +96,7 @@ class MyTestCase(unittest.TestCase):
         for i in range(len(tmp[0])):
             self.assertEqual(tmp[0][i], sol[0][i])
 
-        customer.set_evaluation("EVAL")
+        customer.evaluation = "EVAL"
         self.db.update_customer(customer)
         tmp = self.db.get_customer()
         sol = [(1, 1, 'EVAL')]
@@ -106,6 +106,34 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(self.db.get_address(), [])
         self.assertEqual(self.db.get_person(), [])
         self.assertEqual(self.db.get_customer(), [])
+
+    def test_db_company(self):
+        address_u = models.Address("street_u", "number_u", "postal_code_u", "city_u")
+        address_c = models.Address("street_c", "number_c", "postal_code_c", "city_c")
+        person = models.Person(address_u, "last_name", "first_name", "gsm", "phone", "mail", "12345", "remark")
+        user = models.User(person, "password")
+        company = models.Company(address_c, user, "gsm", "phone", "mail", "tva_number", "iban", "bic", "name")
+        self.db.add_company(company)
+        self.assertEqual(self.db.get_address(), [(1, 'street_c', 'number_c', 'postal_code_c', 'city_c'), (2, 'street_u', 'number_u', 'postal_code_u', 'city_u')])
+        self.assertEqual(self.db.get_person(),
+                         [(1, 2, 'last_name', 'first_name', 'gsm', 'mail', 'phone', "12345", 'remark')])
+        self.assertEqual(self.db.get_company(), [(1, 1, 1, "gsm", "phone", "mail", "tva_number", "iban", "bic", "name")])
+        company.address.postal_code = "test_CP_company"
+        self.db.update_company(company)
+        company.address.street = "test_street_company"
+        self.db.update_company(company)
+        self.assertEqual(company.address.street, "test_street_company")
+        sol = [(1, 'test_street_company', 'number_c', 'test_CP_company', 'city_c'), (2, 'street_u', 'number_u', 'postal_code_u', 'city_u')]
+        tmp = self.db.get_address()
+        for i in range(len(tmp)):
+            for j in range(len(tmp[i])):
+                self.assertEqual(tmp[i][j], sol[i][j])
+
+        self.db.remove_company(company)
+        self.assertEqual(self.db.get_address(), [])
+        self.assertEqual(self.db.get_person(), [])
+        self.assertEqual(self.db.get_user(), [])
+        self.assertEqual(self.db.get_company(), [])
 
 
 if __name__ == '__main__':
