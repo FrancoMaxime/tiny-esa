@@ -135,6 +135,59 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(self.db.get_user(), [])
         self.assertEqual(self.db.get_company(), [])
 
+    def test_db_bill(self):
+        address_u = models.Address("street", "number", "postal_code", "city")
+        address_c = models.Address("street", "number", "postal_code", "city")
+        person_u = models.Person(address_u, "last_name_u", "first_name_u", "gsm_u", "phone_u", "mail_u", "12345",
+                                 "remark_u")
+        person_c = models.Person(address_c, "last_name_c", "first_name_c", "gsm_c", "phone_c", "mail_c", "12345",
+                                 "remark_c")
+        user = models.User(person_u, "password")
+        customer = models.Customer(person_c, "evaluation")
+        bill = models.Bill(customer, user, "num_ref", "billing_date", "due_date", "tva_rate")
+        self.db.add_bill(bill)
+        for i in range(5):
+            p = models.Product(bill, "description_"+str(i), i+1, 50.00)
+            self.db.add_product(p)
+            bill.add_product(p)
+        sol = [(1, 1, 1, 'num_ref', 'billing_date', 'due_date', 'tva_rate', 'False', 'False')]
+        tmp = self.db.get_bill()
+        for i in range(len(sol[0])):
+            self.assertEqual(tmp[0][i], sol[0][i])
+        sol = [(1, 1, 'description_0', 1, 50.0),
+               (2, 1, 'description_1', 2, 50.0),
+               (3, 1, 'description_2', 3, 50.0),
+               (4, 1, 'description_3', 4, 50.0),
+               (5, 1, 'description_4', 5, 50.0)]
+        tmp = self.db.get_product()
+
+        for i in range(len(tmp)):
+            for j in range(len(tmp[i])):
+                self.assertEqual(tmp[i][j], sol[i][j])
+        bill.num_ref = "N/R"
+        bill.due_date = "DD"
+        bill.invoiced = True
+        bill.products[4].description = "TEST MOD DESCRIPTION"
+        self.db.update_bill(bill)
+        sol = [(1, 1, 1, 'N/R', 'billing_date', 'DD', 'tva_rate', 'False', 'True')]
+        tmp = self.db.get_bill()
+        for i in range(len(sol[0])):
+            self.assertEqual(tmp[0][i], sol[0][i])
+
+        sol = [(1, 1, 'description_0', 1, 50.0),
+               (2, 1, 'description_1', 2, 50.0),
+               (3, 1, 'description_2', 3, 50.0),
+               (4, 1, "TEST MOD DESCRIPTION", 4, 50.0),
+               (5, 1, 'description_4', 5, 50.0)]
+        tmp = self.db.get_product()
+        for i in range(len(tmp)):
+            for j in range(len(tmp[i])):
+                self.assertEqual(tmp[i][j], sol[i][j])
+
+        self.db.remove_bill(bill)
+        self.assertEqual(self.db.get_bill(), [])
+        self.assertEqual(self.db.get_product(), [])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -64,10 +64,10 @@ class ProjectDatabase(object):
         self.c.execute('''CREATE TABLE bill(bill_id INTEGER PRIMARY KEY autoincrement, customer_id INTEGER NOT NULL,
                       user_id INTEGER NOT NULL, num_ref text NOT NULL, billing_date text NOT NULL,
                       due_date text NOT NULL, tva_rate INTEGER NOT NULL, paid text NOT NULL, invoiced text NOT NULL,
-                     FOREIGN KEY(user_id) REFERENCES user(user_id), FOREIGN KEY(customer_id) 
-                     REFERENCES customer(customer_id))''')
+                     FOREIGN KEY(user_id) REFERENCES user(user_id), 
+                     FOREIGN KEY(customer_id) REFERENCES customer(customer_id))''')
                      
-        self.c.execute('''CREATE TABLE product(bill_id, description text NOT NULL, amount INTEGER NOT NULL,
+        self.c.execute('''CREATE TABLE product(product_id INTEGER PRIMARY KEY autoincrement ,bill_id INTEGER NOT NULL, description text NOT NULL, amount INTEGER NOT NULL,
                       price_HT REAL NOT NULL, FOREIGN KEY(bill_id) REFERENCES bill(bill_id))''')
         self.conn.commit()
         
@@ -107,8 +107,8 @@ class ProjectDatabase(object):
         if person.address.id < 0:
             self.add_address(person.address)
 
-        self.c.execute("INSERT INTO person(address_id, last_name, first_name, gsm, phone, mail, timestamp,remark) VALUES(" +
-                       person.__str__() + ")")
+        self.c.execute("INSERT INTO person(address_id, last_name, first_name, gsm, phone, mail, timestamp,remark)" +
+                       " VALUES(" + person.__str__() + ")")
         self.conn.commit()
         person.id = int(self.get_person(row='max(person_id)')[0][0])
 
@@ -191,7 +191,7 @@ class ProjectDatabase(object):
             print("EROOOR remove customer")
 
     def add_company(self, company):
-        if company.id < 0 :
+        if company.id < 0:
             self.add_address(company.address)
             self.add_user(company.user)
         self.c.execute("INSERT INTO company(address_id, user_id, gsm,phone, mail, tva_number, iban, bic, name) "
@@ -224,3 +224,64 @@ class ProjectDatabase(object):
 
         else:
             print("ERROOOR REMOVE company")
+
+    def get_bill(self, row="*", condition=None):
+        return self.get_object("bill", row, condition)
+
+    def add_bill(self, bill):
+        if bill.id < 0:
+            self.add_customer(bill.customer)
+            self.add_user(bill.user)
+        self.c.execute("INSERT INTO bill(customer_id, user_id, num_ref, billing_date, due_date, tva_rate, paid, " +
+                       "invoiced) VALUES (" + bill.__str__() + ")")
+        bill.id = int(self.get_bill(row='max(bill_id)')[0][0])
+        for product in bill.products.values():
+            self.add_product(product)
+        self.conn.commit()
+
+    def update_bill(self, bill):
+        if bill.id > 0:
+            self.update_customer(bill.customer)
+            self.update_user(bill.user)
+            self.c.execute("UPDATE bill SET customer_id = " + str(bill.customer.id) + ", user_id = "
+                           + str(bill.user.id) + ", num_ref = '" + bill.num_ref + "', billing_date = '" +
+                           bill.billing_date + "', due_date = '" + bill.due_date + "', tva_rate = '" +
+                           bill.tva_rate + "', paid = '" + str(bill.paid) + "', invoiced = '" +
+                           str(bill.invoiced) + "'")
+            for product in bill.products.values():
+                self.update_product(product)
+            self.conn.commit()
+        else:
+            print("ERROOOOR update bill")
+
+    def remove_bill(self, bill):
+        if bill.id > 0:
+            self.c.execute("DELETE FROM bill WHERE bill_id = " + str(bill.id))
+            self.c.execute("DELETE FROM product WHERE bill_id = " + str(bill.id))
+            self.conn.commit()
+        else:
+            print("ERROOOR REMOVE bill")
+
+    def get_product(self, row="*", condition=None):
+        return self.get_object("product", row, condition)
+
+    def add_product(self, product):
+        self.c.execute("INSERT INTO product(bill_id, description, amount, price_ht) VALUES (" + product.__str__() + ")")
+        self.conn.commit()
+        product.id = int(self.get_product(row='max(product_id)')[0][0])
+
+    def update_product(self, product):
+        if product.bill.id > 0:
+            self.c.execute("UPDATE product SET description = '" + product.description
+                           + "', amount = " + str(product.amount) + ", price_ht = " + str(product.price_ht) +
+                           " WHERE product_id = " + str(product.id))
+            self.conn.commit()
+        else:
+            print("ERROOOOOR update product sans ID")
+
+    def remove_product(self, product):
+        if product.bill.id > 0:
+            self.c.execute("DELETE FROM product WHERE bill_id = " + str(product.id))
+            self.conn.commit()
+        else:
+            print("ERROOOR REMOVE product")

@@ -34,6 +34,8 @@ class AddressTestCase(unittest.TestCase):
         self.assertEqual(test_address.postal_code, "postal_code")
         self.assertEqual(test_address.id, -1)
         self.assertEqual(test_address.__str__(), "'street', 'number', 'postal_code', 'city'")
+        test_address.id = -5
+        self.assertEqual(test_address.id, -1)
 
     def test_update_address(self):
         test_address = models.Address("street", "number", "postal_code", "city")
@@ -48,7 +50,7 @@ class AddressTestCase(unittest.TestCase):
 
     def test_creation_person(self):
         address = models.Address("street", "number", "postal_code", "city")
-        test_person = models.Person(address,"last_name","first_name", "gsm", "phone", "mail","timestamp", "remark")
+        test_person = models.Person(address, "last_name","first_name", "gsm", "phone", "mail", "timestamp", "remark")
         self.assertEqual(test_person.last_name, "last_name")
         self.assertEqual(test_person.first_name, "first_name")
         self.assertEqual(test_person.gsm, "gsm")
@@ -121,6 +123,49 @@ class AddressTestCase(unittest.TestCase):
         self.assertEqual(company.gsm, "ugsm")
         company.address.street = "test_CP_company"
         self.assertEqual(company.address.street, "test_CP_company")
+
+    def test_create_bill(self):
+        address_u = models.Address("street", "number", "postal_code", "city")
+        address_c = models.Address("street", "number", "postal_code", "city")
+        person_u = models.Person(address_u, "last_name_u", "first_name_u", "gsm_u", "phone_u", "mail_u", "12345", "remark_u")
+        person_c = models.Person(address_c, "last_name_c", "first_name_c", "gsm_c", "phone_c", "mail_c", "12345", "remark_c")
+        user = models.User(person_u, "password")
+        customer = models.Customer(person_c, "evaluation")
+        bill = models.Bill(customer, user, "num_ref", "billing_date", "due_date", "tva_rate")
+        self.assertEqual(bill.customer.evaluation, "evaluation")
+        self.assertEqual(bill.num_ref, "num_ref")
+        self.assertEqual(bill.billing_date, "billing_date")
+        self.assertEqual(bill.due_date, "due_date")
+        self.assertEqual(bill.tva_rate, "tva_rate")
+        self.assertEqual(bill.paid, False)
+        self.assertEqual(bill.invoiced, False)
+        self.assertTrue(bill.user.compare_password("password"))
+
+    def test_update_bill(self):
+        address_u = models.Address("street", "number", "postal_code", "city")
+        address_c = models.Address("street", "number", "postal_code", "city")
+        person_u = models.Person(address_u, "last_name_u", "first_name_u", "gsm_u", "phone_u", "mail_u", "12345",
+                                 "remark_u")
+        person_c = models.Person(address_c, "last_name_c", "first_name_c", "gsm_c", "phone_c", "mail_c", "12345",
+                                 "remark_c")
+        user = models.User(person_u, "password")
+        customer = models.Customer(person_c, "evaluation")
+        bill = models.Bill(customer, user, "num_ref", "billing_date", "due_date", "tva_rate")
+        bill.customer.evaluation = "eval"
+        self.assertEqual(bill.customer.evaluation, "eval")
+        bill.num_ref = "N/R"
+        self.assertEqual(bill.num_ref, "N/R")
+        bill.billing_date = "BD"
+        self.assertEqual(bill.billing_date, "BD")
+        bill.due_date = "DD"
+        self.assertEqual(bill.due_date, "DD")
+        bill.tva_rate = "TR"
+        self.assertEqual(bill.tva_rate, "TR")
+        bill.paid = True
+        self.assertEqual(bill.paid, True)
+        bill.invoiced = True
+        self.assertEqual(bill.invoiced, True)
+        self.assertTrue(bill.user.compare_password("password"))
 
 
 if __name__ == '__main__':

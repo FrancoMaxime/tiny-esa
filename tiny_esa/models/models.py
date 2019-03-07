@@ -23,6 +23,9 @@ from tiny_esa.utils import password as pw
 class FrozenClass(object):
     __isfrozen = False
 
+    def __init__(self):
+        self.id = -1
+
     def __setattr__(self, key, value):
         if self.__isfrozen and not hasattr(self, key):
             raise TypeError("%r is a frozen class" % self)
@@ -31,14 +34,29 @@ class FrozenClass(object):
     def _freeze(self):
         self.__isfrozen = True
 
+    @property
+    def id(self):
+        return self.__id
+
+    @id.setter
+    def id(self, value):
+        if value < 0 and not self.__isfrozen:
+            self.__id = value
+        elif value > 0:
+            self.__id = value
+        else:
+            print("ERROR SET ID")
+
+    def isfrozen(self):
+        return self.__isfrozen
 
 class Address(FrozenClass):
     def __init__(self, street, number, postal_code, city):
+        FrozenClass.__init__(self)
         self.street = street
         self.number = number
         self.postal_code = postal_code
         self.city = city
-        self.id = -1
         self._freeze()
         
     @property
@@ -72,14 +90,6 @@ class Address(FrozenClass):
     @city.setter
     def city(self, value):
         self.__city = value
-
-    @property
-    def id(self):
-        return self.__id
-
-    @id.setter
-    def id(self, value):
-        self.__id = value
         
     def __str__(self):
         return "'" + self.street + "', '" + self.number + "', '" + self.postal_code + "', '" + self.city + "'"
@@ -87,6 +97,7 @@ class Address(FrozenClass):
 
 class Person(FrozenClass):
     def __init__(self, address, last_name, first_name, gsm, phone, mail, timestamp, remark=''):
+        FrozenClass.__init__(self)
         self.address = address
         self.last_name = last_name
         self.first_name = first_name
@@ -95,7 +106,6 @@ class Person(FrozenClass):
         self.mail = mail
         self.remark = remark
         self.timestamp = str(timestamp)
-        self.id = -1
         self._freeze()
 
     def __str__(self):
@@ -110,14 +120,6 @@ class Person(FrozenClass):
     @address.setter
     def address(self, value):
         self.__address = value
-
-    @property
-    def id(self):
-        return self.__id
-
-    @id.setter
-    def id(self, value):
-        self.__id = value
 
     @property
     def last_name(self):
@@ -178,18 +180,10 @@ class Person(FrozenClass):
 
 class User(FrozenClass):
     def __init__(self, person, pwd):
+        FrozenClass.__init__(self)
         self.person = person
         self.password = pwd
-        self.id = -1
         self._freeze()
-
-    @property
-    def id(self):
-        return self.__id
-
-    @id.setter
-    def id(self, value):
-        self.__id = value
 
     @property
     def person(self):
@@ -216,18 +210,10 @@ class User(FrozenClass):
 
 class Customer(FrozenClass):
     def __init__(self, person, evaluation):
+        FrozenClass.__init__(self)
         self.person = person
         self.evaluation = evaluation
-        self.id = -1
         self._freeze()
-
-    @property
-    def id(self):
-        return self.__id
-
-    @id.setter
-    def id(self, value):
-        self.__id = value
 
     @property
     def person(self):
@@ -251,6 +237,7 @@ class Customer(FrozenClass):
 
 class Company(FrozenClass):
     def __init__(self, address, user, gsm, phone, mail, tva_number, iban, bic, name):
+        FrozenClass.__init__(self)
         self.address = address
         self.user = user
         self.gsm = gsm
@@ -260,16 +247,7 @@ class Company(FrozenClass):
         self.iban = iban
         self.bic = bic
         self.name = name
-        self.id = -1
         self._freeze()
-
-    @property
-    def id(self):
-        return self.__id
-
-    @id.setter
-    def id(self, value):
-        self.__id = value
 
     def __str__(self):
         return str(self.address.id) + ", " + str(self.user.id) + ", '" + self.gsm + "', '" + self.phone \
@@ -349,8 +327,9 @@ class Company(FrozenClass):
         self.__address = value
 
 
-class Bill(object):
+class Bill(FrozenClass):
     def __init__(self, customer, user, num_ref, billing_date, due_date, tva_rate, paid=False, invoiced=False):
+        FrozenClass.__init__(self)
         self.customer = customer
         self.user = user
         self.num_ref = num_ref
@@ -359,16 +338,125 @@ class Bill(object):
         self.tva_rate = tva_rate
         self.paid = paid
         self.invoiced = invoiced
-        self.id = -1
+        self.products = {}
+        self._freeze()
 
-    def get_customer(self):
-        return self.customer
+    def __str__(self):
+        return str(self.customer.id) + ", " + str(self.user.id) + ", '" + self.num_ref + "', '" + self.billing_date \
+            + "', '" + self.due_date + "', '" + self.tva_rate + "', '" + str(self.paid) + "', '" + \
+            str(self.invoiced) + "'"
 
-    def set_customer(self, customer):
-        self.customer = customer
+    @property
+    def customer(self):
+        return self.__customer
 
-    def get_num_ref(self):
-        return self.num_ref
+    @customer.setter
+    def customer(self, value):
+        self.__customer = value
 
-    def set_num_ref(self, num_ref):
-        self.num_ref = num_ref
+    @property
+    def num_ref(self):
+        return self.__num_ref
+
+    @num_ref.setter
+    def num_ref(self, value):
+        self.__num_ref = value
+
+    @property
+    def billing_date(self):
+        return self.__billing_date
+
+    @billing_date.setter
+    def billing_date(self, value):
+        self.__billing_date = value
+
+    @property
+    def due_date(self):
+        return self.__due_date
+
+    @due_date.setter
+    def due_date(self, value):
+        self.__due_date = value
+
+    @property
+    def tva_rate(self):
+        return self.__tva_rate
+
+    @tva_rate.setter
+    def tva_rate(self, value):
+        self.__tva_rate = value
+
+    @property
+    def paid(self):
+        return self.__paid
+
+    @paid.setter
+    def paid(self, value):
+        self.__paid = value
+
+    @property
+    def invoiced(self):
+        return self.__invoiced
+
+    @invoiced.setter
+    def invoiced(self, value):
+        self.__invoiced = value
+
+    @property
+    def products(self):
+        return self.__products
+
+    @products.setter
+    def products(self, value):
+        self.__products = value
+
+    def add_product(self, p):
+        self.__products[p.id] = p
+
+    def remove_product(self, p):
+        self.__products.pop(p.id)
+
+
+class Product(FrozenClass):
+    def __init__(self, bill, description, amount, price_ht):
+        FrozenClass.__init__(self)
+        self.bill = bill
+        self.description = description
+        self.amount = amount
+        self.price_ht = price_ht
+        self._freeze()
+
+    def __str__(self):
+        return str(self.bill.id) + ",'" + self.description + "', " + str(self.amount) + ", " + str(self.price_ht)
+
+    @property
+    def bill(self):
+        return self.__bill
+
+    @bill.setter
+    def bill(self, value):
+        self.__bill = value
+
+    @property
+    def description(self):
+        return self.__description
+
+    @description.setter
+    def description(self, value):
+        self.__description = value
+
+    @property
+    def amount(self):
+        return self.__amount
+
+    @amount.setter
+    def amount(self, value):
+        self.__amount = value
+
+    @property
+    def price_ht(self):
+        return self.__price_ht
+
+    @price_ht.setter
+    def price_ht(self, value):
+        self.__price_ht = value
