@@ -126,6 +126,4 @@ class HTML2PDF(FPDF):
         pdf.cell(10,11,'',ln=0)
         pdf.set_font('Times_New_RomanB',"B", 11)
         pdf.cell(30, 11 , 'Veuillez mentionner la référence de la facture en communication lors du paiement.', ln=1)
-        
-        
         pdf.output(self.facture_id.get()+'.pdf')

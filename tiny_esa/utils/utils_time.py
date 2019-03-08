@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-from tiny_esa.gui import tiny_esa_gui
+import time
 
-if __name__ == '__main__':
-    app = tiny_esa_gui.TinyESA()
-    app.mainloop()
+
+def get_timestamp():
+    return int(time.time())
