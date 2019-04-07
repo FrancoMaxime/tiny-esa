@@ -1,4 +1,5 @@
 *.pyc
+*.db
 venv/
 tiny_esa/db_handler/__pycache_
 tiny_esa/models/__pycache__

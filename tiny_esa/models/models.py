@@ -23,8 +23,8 @@ from tiny_esa.utils import password as pw
 class FrozenClass(object):
     __isfrozen = False
 
-    def __init__(self):
-        self.id = -1
+    def __init__(self, id=-1):
+        self.id = id
 
     def __setattr__(self, key, value):
         if self.__isfrozen and not hasattr(self, key):
@@ -50,9 +50,13 @@ class FrozenClass(object):
     def isfrozen(self):
         return self.__isfrozen
 
+    def is_sanitized(self):
+        return self.__id == -1 or self.__id > 0
+
+
 class Address(FrozenClass):
-    def __init__(self, street, number, postal_code, city):
-        FrozenClass.__init__(self)
+    def __init__(self, street, number, postal_code, city, id=-1):
+        FrozenClass.__init__(self, id)
         self.street = street
         self.number = number
         self.postal_code = postal_code
@@ -75,6 +79,10 @@ class Address(FrozenClass):
     def city(self):
         return self.__city
 
+    @property
+    def address(self):
+        return self.street + ", " + str(self.number) + ". " + self.postal_code + " " + self.city
+
     @street.setter
     def street(self, value):
         self.__street = value
@@ -92,7 +100,14 @@ class Address(FrozenClass):
         self.__city = value
         
     def __str__(self):
-        return "'" + self.street + "', '" + self.number + "', '" + self.postal_code + "', '" + self.city + "'"
+        return "'" + self.street.replace("'", "''")  + "', '" + str(self.number).replace("'", "''")  + "', '" + self.postal_code.replace("'", "''")  + "', '" + self.city.replace("'", "''")  + "'"
+
+    def is_sanitized(self):
+        return FrozenClass.is_sanitized(self) and self.street != "" and self.number != "" and self.postal_code != "" and self.city != ""
+
+    @staticmethod
+    def address_from_database(data):
+        return Address(data[1], data[2], data[3], data[4], data[0])
 
 
 class Person(FrozenClass):
@@ -109,9 +124,10 @@ class Person(FrozenClass):
         self._freeze()
 
     def __str__(self):
-        return str(self.address.id) + ", '" + self.last_name + "', '" + self.first_name + "', '" +\
-               self.gsm + "', '" + self.phone + "', '" + self.mail + "', '" + self.timestamp + "', '" + self.remark \
-               + "'"
+        return str(self.address.id) + ", '" + self.last_name.replace("'", "''")  + "', '" \
+               + self.first_name.replace("'", "''")  + "', '" + self.gsm.replace("'", "''") + "', '" +\
+               self.phone.replace("'", "''")  + "', '" + self.mail.replace("'", "''") + "', '" +\
+               self.timestamp + "', '" + self.remark.replace("'", "''")  + "'"
         
     @property
     def address(self):
@@ -177,6 +193,11 @@ class Person(FrozenClass):
     def timestamp(self, value):
         self.__timestamp = value
 
+    def is_sanitized(self):
+        return FrozenClass.is_sanitized(self) and self.address.is_sanitized() and self.last_name != "" \
+               and self.first_name != "" and self. mail != "" and self.timestamp != 0 and self.phone != ""\
+               and self.gsm != ""
+
 
 class User(FrozenClass):
     def __init__(self, person, pwd):
@@ -207,6 +228,16 @@ class User(FrozenClass):
     def compare_password(self, pwd):
         return self.password == pw.encrypt(pwd, self.person.timestamp)
 
+    @staticmethod
+    def data_to_user(data_u, person):
+        u = User(person, '')
+        u.__password = data_u[2]
+        u.id = data_u[0]
+        return u
+
+    def is_sanitized(self):
+        return FrozenClass.is_sanitized(self) and self.person.is_sanitized() and self.password != ""
+
 
 class Customer(FrozenClass):
     def __init__(self, person, evaluation):
@@ -232,7 +263,10 @@ class Customer(FrozenClass):
         self.__evaluation = value
 
     def __str__(self):
-        return str(self.person.id) + ", '" + self.evaluation + "'"
+        return str(self.person.id) + ", '" + self.evaluation.replace("'", "''") + "'"
+
+    def is_sanitized(self):
+        return FrozenClass.is_sanitized(self) and self.person.is_sanitized()
 
 
 class Company(FrozenClass):
@@ -250,9 +284,9 @@ class Company(FrozenClass):
         self._freeze()
 
     def __str__(self):
-        return str(self.address.id) + ", " + str(self.user.id) + ", '" + self.gsm + "', '" + self.phone \
-               + "', '" + self.mail + "', '" + self.tva_number + "', '" + self.iban + "', '" + self.bic + "', '" \
-               + self.name + "'"
+        return str(self.address.id) + ", " + str(self.user.id) + ", '" + self.gsm.replace("'", "''")  + "', '" + self.phone.replace("'", "''")  \
+               + "', '" + self.mail.replace("'", "''")  + "', '" + self.tva_number.replace("'", "''")  + "', '" + self.iban.replace("'", "''")  + "', '" + self.bic.replace("'", "''")  + "', '" \
+               + self.name.replace("'", "''") + "'"
 
     @property
     def user(self):
@@ -325,6 +359,11 @@ class Company(FrozenClass):
     @address.setter
     def address(self, value):
         self.__address = value
+
+    def is_sanitized(self):
+        return FrozenClass.is_sanitized(self) and self.address.is_sanitized() and self.user.is_sanitized() and \
+               self.gsm != "" and self.phone != "" and self.bic != "" and self.iban != "" and self.name != "" \
+               and self.mail != "" and self.tva_number != ""
 
 
 class Bill(FrozenClass):
@@ -416,6 +455,14 @@ class Bill(FrozenClass):
     def remove_product(self, p):
         self.__products.pop(p.id)
 
+    def is_sanitized(self):
+        tmp = True
+        for k, v in self.__products.items():
+            tmp = tmp and v.is_sanitized()
+        return FrozenClass.is_sanitized(self) and self.customer.is_sanitized() and self.user.is_sanitized() \
+               and self.num_ref != "" and self. billing_date != "" and self.due_date != "" and self.tva_rate != "" \
+               and tmp
+
 
 class Product(FrozenClass):
     def __init__(self, bill, description, amount, price_ht):
@@ -460,3 +507,6 @@ class Product(FrozenClass):
     @price_ht.setter
     def price_ht(self, value):
         self.__price_ht = value
+
+    def is_sanitized(self):
+        return FrozenClass.is_sanitized(self) and self.description != "" and self.amount >= 0 and self.price_ht >= 0.0

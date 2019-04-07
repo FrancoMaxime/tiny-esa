@@ -71,29 +71,41 @@ class ProjectDatabase(object):
                       price_HT REAL NOT NULL, FOREIGN KEY(bill_id) REFERENCES bill(bill_id))''')
         self.conn.commit()
         
-    def get_object(self, table_name, row, condition):
+    def get_object(self, table_name, row, join, condition):
         if condition is not None:
-            self.c.execute("SELECT " + row + " FROM " + table_name + " where " + condition)
+            if join is None:
+                self.c.execute("SELECT " + row + " FROM " + table_name + " where " + condition)
+            else:
+                self.c.execute("SELECT " + row + " FROM " + table_name + " " + join + " where " + condition)
             return self.c.fetchall()
-
-        self.c.execute("SELECT " + row + " FROM " + table_name)
+        if join is None:
+            self.c.execute("SELECT " + row + " FROM " + table_name)
+        else:
+            self.c.execute("SELECT " + row + " FROM " + table_name + " " + join)
         return self.c.fetchall()
 
     def add_address(self, address):
-        self.c.execute("INSERT INTO address(street, number, postal_code,city) VALUES("+address.__str__()+")")
-        self.conn.commit()
-        address.id = int(self.get_address(row = 'max(address_id)')[0][0])
+        if address.id != 0:
+            self.c.execute("INSERT INTO address(street, number, postal_code,city) VALUES(" +
+                           address.__str__() + ")")
+            self.conn.commit()
+            address.id = int(self.get_address(row='max(address_id)')[0][0])
+        else:
+            self.update_address(address)
+            print(" Error Add address")
 
-    def get_address(self, row='*', condition=None):
-        return self.get_object("address", row, condition)
+    def get_address(self, row='*', join= None, condition=None):
+        return self.get_object("address", row, join, condition)
 
-    def update_address(self,address):
+    def update_address(self, address):
         if address.id > 0:
-            self.c.execute("UPDATE address SET street = '" + address.street+"', number = '" +
-                           address.number + "', postal_code = '" + address.postal_code + "', city = '" +
-                           address.city + "' WHERE address_id = " + str(address.id))
+            self.c.execute("UPDATE address SET street = '" + address.street.replace("'", "''")+"', number = '" +
+                           address.number.replace("'", "''") + "', postal_code = '" +
+                           address.postal_code.replace("'", "''") + "', city = '" +address.city.replace("'", "''")
+                           + "' WHERE address_id = " + str(address.id))
             self.conn.commit()
         else:
+            self.add_address(address)
             print("ERROOOOOR update address sans ID")
         
     def remove_address(self, address):
@@ -106,11 +118,14 @@ class ProjectDatabase(object):
     def add_person(self, person):
         if person.address.id < 0:
             self.add_address(person.address)
-
-        self.c.execute("INSERT INTO person(address_id, last_name, first_name, gsm, phone, mail, timestamp,remark)" +
-                       " VALUES(" + person.__str__() + ")")
-        self.conn.commit()
-        person.id = int(self.get_person(row='max(person_id)')[0][0])
+        if person.id < 0:
+            self.c.execute("INSERT INTO person(address_id, last_name, first_name, gsm, phone, mail, timestamp,remark)"
+                           + " VALUES(" + person.__str__() + ")")
+            self.conn.commit()
+            person.id = int(self.get_person(row='max(person_id)')[0][0])
+        else:
+            self.update_person(person)
+            print("ERROR IN ADD PERSON")
 
     def remove_person(self, person):
         if person.id > 0:
@@ -120,31 +135,36 @@ class ProjectDatabase(object):
         else:
             print("EROOOR remove person")
 
-    def get_person(self, row="*", condition=None):
-        return self.get_object("person", row, condition)
+    def get_person(self, row="*", join=None, condition=None):
+        return self.get_object("person", row, join, condition)
 
     def update_person(self, person):
         if person.id > 0:
             self.update_address(person.address)
-            self.c.execute("UPDATE person SET first_name = '" + person.first_name+"', last_name = '" +
-                           person.last_name + "', gsm = '" + person.gsm + "', phone = '" +
-                           person.phone + "', mail = '" + person.mail + "', timestamp ='" +
-                           person.timestamp + "', remark = '" + person.remark + "' WHERE person_id = "
-                           + str(person.id))
+            self.c.execute("UPDATE person SET first_name = '" + person.first_name.replace("'", "''")
+                           + "', last_name = '" + person.last_name.replace("'", "''") + "', gsm = '" +
+                           person.gsm.replace("'", "''") + "', phone = '" + person.phone.replace("'", "''") +
+                           "', mail = '" + person.mail.replace("'", "''") + "', timestamp ='" + person.timestamp +
+                           "', remark = '" + person.remark.replace("'", "''") + "' WHERE person_id = "+ str(person.id))
             self.conn.commit()
 
         else:
+            self.add_person(person)
             print("ERROOOOOR update person sans ID")
 
     def add_user(self, user):
         if user.person.id < 0:
             self.add_person(user.person)
-        self.c.execute("INSERT INTO user(person_id, password) VALUES("+user.__str__()+")")
-        self.conn.commit()
-        user.id = int(self.get_user(row='max(user_id)')[0][0])
+        if user.id < 0:
+            self.c.execute("INSERT INTO user(person_id, password) VALUES("+user.__str__() + ")")
+            self.conn.commit()
+            user.id = int(self.get_user(row='max(user_id)')[0][0])
+        else:
+            self.update_user(user)
+            print("Error add User")
 
-    def get_user(self, row="*", condition=None):
-        return self.get_object("user", row, condition)
+    def get_user(self, row="*", join=None, condition=None):
+        return self.get_object("user", row, join, condition)
 
     def update_user(self, user):
         if user.id > 0:
@@ -153,6 +173,7 @@ class ProjectDatabase(object):
                            + user.password + "' WHERE user_id = " + str(user.id))
             self.conn.commit()
         else:
+            self.add_user(user)
             print("ERROOOOOR update user sans ID")
 
     def remove_user(self, user):
@@ -166,20 +187,26 @@ class ProjectDatabase(object):
     def add_customer(self, customer):
         if customer.person.id < 0:
             self.add_person(customer.person)
-        self.c.execute("INSERT INTO customer(person_id, evaluation) VALUES(" + customer.__str__() + ")")
-        self.conn.commit()
-        customer.id = int(self.get_customer(row='max(customer_id)')[0][0])
+        if customer.id < 0:
+            self.c.execute("INSERT INTO customer(person_id, evaluation) VALUES(" + customer.__str__() + ")")
+            self.conn.commit()
+            customer.id = int(self.get_customer(row='max(customer_id)')[0][0])
+        else:
+            self.update_customer(customer)
+            print("Error add Customer")
 
-    def get_customer(self, row="*", condition=None):
-        return self.get_object("customer", row, condition)
+    def get_customer(self, row="*", join=None, condition=None):
+        return self.get_object("customer", row, join, condition)
 
     def update_customer(self, customer):
         if customer.id > 0:
             self.update_person(customer.person)
             self.c.execute("UPDATE customer SET person_id = " + str(customer.person.id)
-                           + ", evaluation = '" + customer.evaluation + "' WHERE customer_id = " + str(customer.id))
+                           + ", evaluation = '" + customer.evaluation.replace("'", "''") +
+                           "' WHERE customer_id = " + str(customer.id))
             self.conn.commit()
         else:
+            self.add_customer(customer)
             print("ERROOOOOR update customer sans ID")
 
     def remove_customer(self, customer):
@@ -193,26 +220,33 @@ class ProjectDatabase(object):
     def add_company(self, company):
         if company.id < 0:
             self.add_address(company.address)
+        if company.user.id < 0:
             self.add_user(company.user)
-        self.c.execute("INSERT INTO company(address_id, user_id, gsm,phone, mail, tva_number, iban, bic, name) "
-                       + "VALUES (" + company.__str__() + ")")
-        self.conn.commit()
-        company.id = int(self.get_company(row='max(company_id)')[0][0])
+        if company.id < 0:
+            self.c.execute("INSERT INTO company(address_id, user_id, gsm,phone, mail, tva_number, iban, bic, name) "
+                           + "VALUES (" + company.__str__()+ ")")
+            self.conn.commit()
+            company.id = int(self.get_company(row='max(company_id)')[0][0])
+        else:
+            self.update_company(company)
+            print("Error Add company")
 
-    def get_company(self, row="*", condition=None):
-        return self.get_object("company", row, condition)
+    def get_company(self, row="*", join=None, condition=None):
+        return self.get_object("company", row, join, condition)
 
     def update_company(self, company):
         if company.id > 0:
             self.update_address(company.address)
             self.update_user(company.user)
             self.c.execute("UPDATE company SET address_id = " + str(company.address.id) + ", user_id = "
-                           + str(company.user.id) + ", gsm = '" + company.gsm + "', phone = '" +
-                           company.phone + "', mail = '" + company.mail + "', tva_number = '" +
-                           company.tva_number + "', iban = '" + company.iban + "', bic = '" +
-                           company.bic + "', name = '" + company.name + "'")
+                           + str(company.user.id) + ", gsm = '" + company.gsm.replace("'", "''") + "', phone = '" +
+                           company.phone.replace("'", "''") + "', mail = '" + company.mail.replace("'", "''") +
+                           "', tva_number = '" + company.tva_number.replace("'", "''") + "', iban = '" +
+                           company.iban.replace("'", "''") + "', bic = '" + company.bic.replace("'", "''") +
+                           "', name = '" + company.name.replace("'", "''") + "'")
             self.conn.commit()
         else:
+            self.add_company(company)
             print("ERROOOOR update company")
 
     def remove_company(self, company):
@@ -225,33 +259,37 @@ class ProjectDatabase(object):
         else:
             print("ERROOOR REMOVE company")
 
-    def get_bill(self, row="*", condition=None):
-        return self.get_object("bill", row, condition)
+    def get_bill(self, row="*", join=None,condition=None):
+        return self.get_object("bill", row, join, condition)
 
     def add_bill(self, bill):
         if bill.id < 0:
             self.add_customer(bill.customer)
             self.add_user(bill.user)
-        self.c.execute("INSERT INTO bill(customer_id, user_id, num_ref, billing_date, due_date, tva_rate, paid, " +
-                       "invoiced) VALUES (" + bill.__str__() + ")")
-        bill.id = int(self.get_bill(row='max(bill_id)')[0][0])
-        for product in bill.products.values():
-            self.add_product(product)
-        self.conn.commit()
+        if bill.id < 0:
+            self.c.execute("INSERT INTO bill(customer_id, user_id, num_ref, billing_date, due_date, tva_rate, paid, " +
+                           "invoiced) VALUES (" + bill.__str__() + ")")
+            bill.id = int(self.get_bill(row='max(bill_id)')[0][0])
+            for product in bill.products.values():
+                self.add_product(product)
+            self.conn.commit()
+        else:
+            self.update_bill(bill)
 
     def update_bill(self, bill):
         if bill.id > 0:
             self.update_customer(bill.customer)
             self.update_user(bill.user)
             self.c.execute("UPDATE bill SET customer_id = " + str(bill.customer.id) + ", user_id = "
-                           + str(bill.user.id) + ", num_ref = '" + bill.num_ref + "', billing_date = '" +
-                           bill.billing_date + "', due_date = '" + bill.due_date + "', tva_rate = '" +
-                           bill.tva_rate + "', paid = '" + str(bill.paid) + "', invoiced = '" +
-                           str(bill.invoiced) + "'")
+                           + str(bill.user.id) + ", num_ref = '" + bill.num_ref.replace("'", "''") +
+                           "', billing_date = '" + bill.billing_date.replace("'", "''") + "', due_date = '" +
+                           bill.due_date.replace("'", "''") + "', tva_rate = '" + bill.tva_rate.replace("'", "''") +
+                           "', paid = '" + str(bill.paid) + "', invoiced = '" + str(bill.invoiced) + "'")
             for product in bill.products.values():
                 self.update_product(product)
             self.conn.commit()
         else:
+            self.add_bill(bill)
             print("ERROOOOR update bill")
 
     def remove_bill(self, bill):
@@ -262,21 +300,26 @@ class ProjectDatabase(object):
         else:
             print("ERROOOR REMOVE bill")
 
-    def get_product(self, row="*", condition=None):
-        return self.get_object("product", row, condition)
+    def get_product(self, row="*", join=None, condition=None):
+        return self.get_object("product", row, join, condition)
 
     def add_product(self, product):
-        self.c.execute("INSERT INTO product(bill_id, description, amount, price_ht) VALUES (" + product.__str__() + ")")
-        self.conn.commit()
-        product.id = int(self.get_product(row='max(product_id)')[0][0])
+        if product.id < 0 :
+            self.c.execute("INSERT INTO product(bill_id, description, amount, price_ht) VALUES (" +
+                           product.__str__() + ")")
+            self.conn.commit()
+            product.id = int(self.get_product(row='max(product_id)')[0][0])
+        else:
+            self.update_product(product)
 
     def update_product(self, product):
         if product.bill.id > 0:
-            self.c.execute("UPDATE product SET description = '" + product.description
+            self.c.execute("UPDATE product SET description = '" + product.description.replace("'", "''")
                            + "', amount = " + str(product.amount) + ", price_ht = " + str(product.price_ht) +
                            " WHERE product_id = " + str(product.id))
             self.conn.commit()
         else:
+            self.add_product(product)
             print("ERROOOOOR update product sans ID")
 
     def remove_product(self, product):

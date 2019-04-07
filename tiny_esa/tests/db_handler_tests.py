@@ -43,6 +43,10 @@ class MyTestCase(unittest.TestCase):
         self.db.remove_address(address)
         self.assertEqual(self.db.get_address(), [])
 
+        test_address = models.Address("rue d'Angelo", "25A", "cp angelo", "Angelo's city")
+        self.db.add_address(test_address)
+        self.assertEqual(self.db.get_address(),[(2, "rue d'Angelo", '25A', 'cp angelo', "Angelo's city")])
+
     def test_db_person(self):
         address = models.Address("street", "number", "postal_code", "city")
         test_person = models.Person(address, "last_name", "first_name", "gsm", "phone", "mail", "12345", "remark")
@@ -100,12 +104,16 @@ class MyTestCase(unittest.TestCase):
         self.db.update_customer(customer)
         tmp = self.db.get_customer()
         sol = [(1, 1, 'EVAL')]
+        self.assertEqual(self.db.get_customer(
+            "customer.customer_id, person.last_name, person.first_name," "person.address_id, customer.evaluation",
+            "INNER JOIN person ON person.person_id = customer.person_id"), [(1, 'last_name', 'first_name', 1, 'EVAL')])
         for i in range(len(tmp[0])):
             self.assertEqual(tmp[0][i], sol[0][i])
         self.db.remove_customer(customer)
         self.assertEqual(self.db.get_address(), [])
         self.assertEqual(self.db.get_person(), [])
         self.assertEqual(self.db.get_customer(), [])
+
 
     def test_db_company(self):
         address_u = models.Address("street_u", "number_u", "postal_code_u", "city_u")

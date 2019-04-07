@@ -25,7 +25,7 @@ from tiny_esa.utils import password as pw
 
 class AddressTestCase(unittest.TestCase):
 
-    def test_creation_address(self):
+    def test_creation_address1(self):
         test_address = models.Address("street", "number", "postal_code", "city")
 
         self.assertEqual(test_address.city, "city")
@@ -36,6 +36,18 @@ class AddressTestCase(unittest.TestCase):
         self.assertEqual(test_address.__str__(), "'street', 'number', 'postal_code', 'city'")
         test_address.id = -5
         self.assertEqual(test_address.id, -1)
+
+    def test_creation_address2(self):
+        test_address = models.Address("rue d'Angelo", "25A", "cp angelo", "Angelo's city")
+
+        self.assertEqual(test_address.city, "Angelo's city")
+        self.assertEqual(test_address.number, "25A")
+        self.assertEqual(test_address.street, "rue d'Angelo")
+        self.assertEqual(test_address.postal_code, "cp angelo")
+        self.assertEqual(test_address.id, -1)
+        self.assertEqual(test_address.__str__(), "'rue d''Angelo', '25A', 'cp angelo', 'Angelo''s city'")
+        test_address.id = 5
+        self.assertEqual(test_address.id, 5)
 
     def test_update_address(self):
         test_address = models.Address("street", "number", "postal_code", "city")

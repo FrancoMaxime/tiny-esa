@@ -20,11 +20,11 @@
 import tkinter as tk
 from tkinter import ttk
 import datetime
-import os
 from tiny_esa.pdf import pdf_generation
 from tiny_esa.models import models
-from tiny_esa.utils import utils_time
 from tiny_esa.db_handler import db_handler
+from tiny_esa.utils import password
+from tiny_esa.gui import tiny_esa_embedded
 
 
 LARGE_FONT = ("Verdana", 12)
@@ -37,57 +37,105 @@ class TinyESA(tk.Tk):
         tk.Tk.wm_title(self, "Tiny ESA")
         self.geometry("1600x900")
         self.db_name = "database.db"
+        self.db = db_handler.ProjectDatabase(self.db_name)
+        self.previous = None
         container = tk.Frame(self)
         container.pack(side="top", fill="both", expand=True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
         self.frames = {}
 
-        for F in (StartPage, CreateBill, Credit, CreateUser, CreateCustomer, CreateCompany, InstallingPage):
+        for F in (StartPage, CreateBill, Credit, CreateUser, CreateCustomer, CreateCompany, InstallingPage, SignIn,
+                  CustomerList, UserList):
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")
-        if os.path.isfile(self.db_name):
-            self.show_frame(StartPage)
-        else:
-            self.show_frame(InstallingPage)
 
-        self.db = db_handler.ProjectDatabase(self.db_name)
+        if len(self.db.get_user()) == 0 or len(self.db.get_company()) == 0:
+            self.show_frame(InstallingPage)
+        else:
+            self.show_frame(SignIn)
 
     def show_frame(self, cont):
+        if self.previous is not None:
+            self.previous.reset_frame()
         frame = self.frames[cont]
         frame.tkraise()
+        self.previous = frame
+
+    def observer(self, element):
+        if element == "user":
+            self.frames[UserList].update()
+        elif element == "customer":
+            self.frames[CustomerList].update()
+        else:
+            print("ERROOOOOR MY UPDATE ON KEY  : " + element)
+
+    def load_element(self, key, element_id):
+        if key == "user":
+            self.frames[CreateUser].load_user(element_id)
+        elif key == "customer":
+            self.frames[CreateCustomer].load_customer(element_id)
+        else:
+            print("ERROOOOOR LOAD ELEMENT ON KEY  : " + element_id)
 
 
 class StartPage(tk.Frame):
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        self.parent = parent
+        tk.Frame.__init__(self, parent, padx=10, pady=10)
         self.controller = controller
+        self.parent = parent
+        row = 0
+        label = ttk.Label(self, width=20, text="Start Page", font=LARGE_FONT)
+        label.configure(anchor="center")
+        label.grid(column=0, row=row)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_columnconfigure(0, weight=0)
+        row += 1
 
-        label = ttk.Label(self, text="Start Page", font=LARGE_FONT)
-        label.pack(pady=10, padx=10)
-
-        cbill = ttk.Button(self, text="Generate a Bill",
+        cbill = ttk.Button(self, width=20, text="Generate a Bill",
                            command=lambda: controller.show_frame(CreateBill))
-        cbill.pack()
+        cbill.grid(column=0, row=row)
+        self.grid_rowconfigure(1, weight=0)
+        row += 1
 
-        cuser = ttk.Button(self, text="Create a new User",
+        cuser = ttk.Button(self, width=20, text="Create a new User",
                            command=lambda: controller.show_frame(CreateUser))
-        cuser.pack()
+        cuser.grid(column=0, row=row)
+        self.grid_rowconfigure(2, weight=0)
+        row += 1
 
-        ccustomer = ttk.Button(self, text="Create a new customer",
+        luser = ttk.Button(self, width=20, text="Consult the users",
+                               command=lambda: controller.show_frame(UserList))
+        luser.grid(column=0, row=row)
+        self.grid_rowconfigure(4, weight=0)
+        row += 1
+
+        ccustomer = ttk.Button(self, width=20, text="Create a new customer",
                                command=lambda: controller.show_frame(CreateCustomer))
-        ccustomer.pack()
+        ccustomer.grid(column=0, row=row)
+        self.grid_rowconfigure(3, weight=0)
+        row += 1
 
-        credit = ttk.Button(self, text="Credit",
+        lcustomer = ttk.Button(self, width=20, text="Consult the customers",
+                               command=lambda: controller.show_frame(CustomerList))
+        lcustomer.grid(column=0, row=row)
+        self.grid_rowconfigure(4, weight=0)
+        row += 1
+
+        credit = ttk.Button(self, width=20, text="Credit",
                             command=lambda: controller.show_frame(Credit))
-        credit.pack()
+        credit.grid(column=0, row=row)
+        self.grid_rowconfigure(5, weight=0)
+        row += 1
+
+    def reset_frame(self):
+        pass
 
 
 class CreateBill(tk.Frame):
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent,padx=10, pady=10)
+        tk.Frame.__init__(self, parent, padx=10, pady=10)
         self.grid_rowconfigure(50, weight=1)
         self.grid_columnconfigure(5, weight=1)
         self.controller = controller
@@ -198,143 +246,119 @@ class Credit(tk.Frame):
 class CreateUser(tk.Frame):
     def __init__(self, parent, controller, embedded=False):
         tk.Frame.__init__(self, parent, padx=10, pady=10)
-        self.grid_rowconfigure(50, weight=1)
-        self.grid_columnconfigure(10, weight=1)
         self.controller = controller
-        label = ttk.Label(self, text="Creation of a new user", font=LARGE_FONT)
-        label.grid(column=1, row=1, pady=5)
+        self.embedded = embedded
+        label = ttk.Label(self, text="Creation of a new user", font=LARGE_FONT, foreground="blue")
+        label.grid(column=0, row=1, pady=5)
+        if not self.embedded:
+            self.error = tk.StringVar()
+            self.error_label = ttk.Label(self, textvariable=self.error, font=LARGE_FONT, foreground="red")
+            self.error_label.grid(column=1, row=2, columnspan=10, pady=5)
 
-        self.person = CreatePerson(self)
-        self.person.grid(column=1, row=1, columnspan=9)
+        self.person = tiny_esa_embedded.CreatePerson(self)
+        self.person.grid(column=1, row=3, columnspan=9)
 
         self.password = tk.StringVar()
-        label_password = ttk.Label(self, text="Mot de passe : ", font=LARGE_FONT)
-        label_password.grid(column=1, row=2, padx=10, pady=5)
-        text_password = ttk.Entry(self, width=30, font=LARGE_FONT, textvariable=self.password, show="*")
-        text_password.grid(column=2, row=2, pady=5)
-        if not embedded:
+        self.label_password = ttk.Label(self, text="Mot de passe : ", font=LARGE_FONT)
+        self.label_password.grid(column=1, row=4, padx=10, pady=5)
+        self.text_password = ttk.Entry(self, width=30, font=LARGE_FONT, textvariable=self.password, show="*")
+        self.text_password.grid(column=2, row=4, pady=5)
+        if not self.embedded:
+            button2 = ttk.Button(self, text="Retourner au menu", command=lambda: controller.show_frame(StartPage))
+            button2.grid(column=8, row=49)
             button3 = ttk.Button(self, text="Creer le nouvel utilisateur", command=self.generate_user)
             button3.grid(column=9, row=49)
+        self.user = None
 
     def generate_user(self):
         person = self.person.generate_person()
+        print("ensuite")
+        print(person.timestamp)
         user = models.User(person, self.password.get())
-        self.controller.db.add_user(user)
-        return user
+        if user.is_sanitized() and len(self.password.get()) > 7:
+            if self.user is None:
+                self.controller.db.add_user(user)
+            else:
+                user.id = self.user
+                self.controller.db.update_user(user)
+            print(user.password)
+            self.controller.observer("user")
+            self.controller.show_frame(UserList)
+        elif not self.embedded:
+            if len(self.password.get()) < 8:
+                self.text_password.configure(foreground="red")
+            self.error.set("Erreur, il y a une erreur dans le formulaire. Vérifiez que les champs sont bien remplis")
+        if self.embedded:
+            return user
+
+    def reset_frame(self):
+        self.person.reset_frame()
+        self.error.set("")
+        self.password.set("")
+        self.user = None
+
+    def load_user(self, user_id):
+        info = self.controller.db.get_user(condition='user_id == ' + str(user_id))
+        self.user = info[0][0]
+        self.person.load_person(info[0][1])
 
 
 class CreateCustomer(tk.Frame):
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent, padx=10, pady=10)
-        self.grid_rowconfigure(50, weight=1)
-        self.grid_columnconfigure(10, weight=1)
+        tk.Frame.__init__(self, parent, padx=10)
         self.controller = controller
+        self.customer = None
         label = ttk.Label(self, text="Creation of a new customer", font=LARGE_FONT)
-        label.grid(column=1, row=1, columnspan=10, pady=5)
+        label.grid(column=1, row=0)
+        for i in range(10):
+            self.grid_rowconfigure(i, weight=0)
+        for i in range(5):
+            self.grid_columnconfigure(i, weight=0)
 
-        self.person = CreatePerson(self)
-        self.person.grid(column=1, row=1, columnspan=9)
+        self.error = tk.StringVar()
+        self.error_label = ttk.Label(self, textvariable=self.error, font=LARGE_FONT, foreground="red")
+        self.error_label.grid(column=1, row=1, columnspan=10, pady=5)
+
+        self.person = tiny_esa_embedded.CreatePerson(self)
+        self.person.grid(column=0, row=2, columnspan=9, sticky="NSWE")
 
         self.evaluation = tk.StringVar()
-        label_evaluation = ttk.Label(self, text="Evaluation : ", font=LARGE_FONT)
-        label_evaluation.grid(column=1, row=2, padx=10, pady=5)
+        label_evaluation = ttk.Label(self, width=11, text="Evaluation : ", font=LARGE_FONT)
+        label_evaluation.grid(column=0, row=3, pady=5, sticky="NSWE")
         text_evaluation = ttk.Entry(self, width=50, font=LARGE_FONT, textvariable=self.evaluation)
-        text_evaluation.grid(column=2, row=2, pady=5)
+        text_evaluation.grid(column=1, row=3, pady=5, sticky="NSWE")
 
+        button2 = ttk.Button(self, text="Retourner au menu", command=lambda: controller.show_frame(StartPage))
+        button2.grid(column=8, row=49)
         button3 = ttk.Button(self, text="Creer le nouveau client", command=self.generate_customer)
         button3.grid(column=9, row=49)
 
     def generate_customer(self):
         person = self.person.generate_person()
         customer = models.Customer(person, self.evaluation.get())
+        if customer is not None and customer.is_sanitized():
+            if self.customer is None:
+                self.controller.db.add_customer(customer)
+            else:
+                customer = self.customer
+                self.controller.db.update_customer(customer)
+            self.controller.observer("customer")
+            self.controller.show_frame(CustomerList)
+        else:
+            self.error.set("Erreur, il y a une erreur dans le formulaire. Vérifiez que les champs sont bien remplis")
         return customer
 
+    def reset_frame(self):
+        self.person.reset_frame()
+        self.evaluation.set("")
+        self.error.set("")
+        self.customer = None
 
-class CreateAddress(tk.Frame):
-    def __init__(self, parent):
-        tk.Frame.__init__(self, parent, padx=10, pady=10)
-        self.grid_rowconfigure(50, weight=1)
-        self.grid_columnconfigure(10, weight=1)
-
-        self.street = tk.StringVar()
-        label_street = ttk.Label(self, text="Rue : ", font=LARGE_FONT)
-        label_street.grid(column=1, row=1, pady=5)
-        text_street = ttk.Entry(self, width=80, font=LARGE_FONT, textvariable=self.street)
-        text_street.grid(column=2, columnspan=4, row=1, pady=5)
-
-        self.number = tk.StringVar()
-        label_number = ttk.Label(self, text="N° : ", font=LARGE_FONT)
-        label_number.grid(column=6, row=1, padx=10, pady=5)
-        text_number = ttk.Entry(self, width=8, font=LARGE_FONT, textvariable=self.number)
-        text_number.grid(column=7, row=1, pady=5)
-
-        self.postal_code = tk.StringVar()
-        label_postal_code = ttk.Label(self, text="Code postal : ", font=LARGE_FONT)
-        label_postal_code.grid(column=1, row=2, pady=5)
-        text_postal_code = ttk.Entry(self, width=20, font=LARGE_FONT, textvariable=self.postal_code)
-        text_postal_code.grid(column=2, row=2, pady=5)
-
-        self.city = tk.StringVar()
-        label_city = ttk.Label(self, text="City : ", font=LARGE_FONT)
-        label_city.grid(column=3, row=2, padx=10, pady=5)
-        text_city = ttk.Entry(self, width=30, font=LARGE_FONT, textvariable=self.city)
-        text_city.grid(column=4, row=2, pady=5)
-
-    def generate_address(self):
-        address = models.Address(self.street.get(), self.number.get(), self.postal_code.get(), self.city.get())
-        return address
-
-
-class CreatePerson(tk.Frame):
-    def __init__(self, parent):
-        tk.Frame.__init__(self, parent, padx=10, pady=10)
-        self.grid_rowconfigure(50, weight=1)
-        self.grid_columnconfigure(10, weight=1)
-
-        self.lastname = tk.StringVar()
-        label_lastname = ttk.Label(self, text="Nom : ", font=LARGE_FONT)
-        label_lastname.grid(column=1, row=2, pady=5)
-        text_lastname = ttk.Entry(self, width=40, font=LARGE_FONT, textvariable=self.lastname)
-        text_lastname.grid(column=2, row=2, pady=5)
-
-        self.firstname = tk.StringVar()
-        label_firstname = ttk.Label(self, text="Prénom : ", font=LARGE_FONT)
-        label_firstname.grid(column=1, row=3, pady=5)
-        text_firstname = ttk.Entry(self, width=40, font=LARGE_FONT, textvariable=self.firstname)
-        text_firstname.grid(column=2, row=3, pady=5)
-
-        self.address_frame = CreateAddress(self)
-        self.address_frame.grid(column=1, row=4, rowspan=3, columnspan=5)
-
-        self.gsm = tk.StringVar()
-        label_gsm = ttk.Label(self, text="GSM : ", font=LARGE_FONT)
-        label_gsm.grid(column=1, row=7, pady=5)
-        text_gsm = ttk.Entry(self, width=40, font=LARGE_FONT, textvariable=self.gsm)
-        text_gsm.grid(column=2, row=7, pady=5)
-
-        self.phone = tk.StringVar()
-        label_phone = ttk.Label(self, text="Téléphone fixe : ", font=LARGE_FONT)
-        label_phone.grid(column=1, row=8, pady=5)
-        text_phone = ttk.Entry(self, width=40, font=LARGE_FONT, textvariable=self.phone)
-        text_phone.grid(column=2, row=8, pady=5)
-
-        self.mail = tk.StringVar()
-        label_mail = ttk.Label(self, text="mail : ", font=LARGE_FONT)
-        label_mail.grid(column=1, row=9, pady=5)
-        text_mail = ttk.Entry(self, width=50, font=LARGE_FONT, textvariable=self.mail)
-        text_mail.grid(column=2, row=9, pady=5)
-
-        self.remark = tk.StringVar()
-        label_remark = ttk.Label(self, text="Remark : ", font=LARGE_FONT)
-        label_remark.grid(column=1, row=9, pady=5)
-        text_remark = ttk.Entry(self, width=100, font=LARGE_FONT, textvariable=self.remark)
-        text_remark.grid(column=2, row=9, pady=5)
-
-    def generate_person(self):
-        address = self.address_frame.generate_address()
-        person = models.Person(address, self.lastname.get(), self.firstname.get(), self.gsm.get(), self.phone.get(),
-                               self.mail.get(), utils_time.get_timestamp(), self.remark.get())
-        return person
+    def load_customer(self, customer_id):
+        info = self.controller.db.get_customer(condition='customer_id == ' + str(customer_id))
+        self.customer = info[0][0]
+        self.person.load_person(info[0][1])
+        self.evaluation.set(info[0][2])
 
 
 class CreateCompany(tk.Frame):
@@ -353,7 +377,7 @@ class CreateCompany(tk.Frame):
         text_name = ttk.Entry(self, width=40, font=LARGE_FONT, textvariable=self.name)
         text_name.grid(column=2, row=1, pady=5)
 
-        self.address_frame = CreateAddress(self)
+        self.address_frame = tiny_esa_embedded.CreateAddress(self)
         self.address_frame.grid(column=1, row=2, rowspan=3, columnspan=10)
 
         self.gsm = tk.StringVar()
@@ -418,7 +442,7 @@ class InstallingPage(tk.Frame):
         button3.grid(column=2, row=49)
 
     def installing(self):
-        if self.state == 0:
+        if self.state == 0 and self.user is None:
             self.user = self.i_element.generate_user()
             self.state += 1
             self.i_element.destroy()
@@ -426,4 +450,202 @@ class InstallingPage(tk.Frame):
             self.i_element.grid(column=1, row=1, rowspan=10, columnspan=10)
         elif self.state == 1:
             self.controller.company = self.i_element.generate_company(self.user)
+            self.controller.user = self.user
+            self.controller.show_frame(StartPage)
 
+    def reset_frame(self):
+        pass
+
+
+class SignIn(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent, padx=10, pady=10)
+        self.parent = parent
+        self.controller = controller
+        for i in range(6):
+            self.grid_rowconfigure(i, weight=0)
+        for i in range(5):
+            self.grid_columnconfigure(i, weight=0)
+
+        label = ttk.Label(self, text="Connexion", font=LARGE_FONT, anchor="center")
+        label.grid(column=2, row=0, pady=5, sticky="NSWE")
+
+        self.error = tk.StringVar()
+        self.errorlabel = ttk.Label(self, textvariable=self.error, font=LARGE_FONT, foreground="red")
+        self.errorlabel.grid(column=1, row=2, columnspan=10, pady=5, sticky="NSWE")
+
+        self.mail = tk.StringVar()
+        label_mail = ttk.Label(self, text="Mail : ", font=LARGE_FONT)
+        label_mail.grid(column=1, row=3, pady=5, sticky="NSWE")
+        self.text_mail = ttk.Entry(self, width=50, font=LARGE_FONT, textvariable=self.mail)
+        self.text_mail.grid(column=2, row=3, pady=5)
+
+        self.password = tk.StringVar()
+        label_password = ttk.Label(self, text="Mot de passe : ", font=LARGE_FONT)
+        label_password.grid(column=1, row=4, pady=5, sticky="NSWE")
+        self.text_password = ttk.Entry(self, width=50, font=LARGE_FONT, textvariable=self.password, show="*")
+        self.text_password.grid(column=2, row=4, pady=5)
+        self.grid_rowconfigure(4, weight=0)
+
+        button3 = ttk.Button(self, text="Connexion", command=self.signin)
+        button3.grid(column=3, row=5, sticky="NSWE")
+
+    def signin(self):
+        person = self.controller.db.get_person(row="*", condition="mail == '" + self.mail.get() + "'")
+        config_error = False
+        if len(person) > 0:
+            user = self.controller.db.get_user(row="*", condition="person_id = " + str(person[0][0]))
+            if len(user) > 0 and user[0][2] == password.encrypt(self.password.get(), person[0][7]):
+                self.controller.show_frame(StartPage)
+            else:
+                config_error = True
+        else:
+            config_error = True
+
+        if config_error:
+            self.error.set("Erreur mauvais mot de passe ou mauvais mail!")
+            self.text_mail.configure(foreground="red")
+            self.text_password.configure(foreground="red")
+
+    def reset_frame(self):
+        self.error.set("")
+        self.mail.set("")
+        self.password.set("")
+
+
+class CustomerList(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent, padx=10, pady=10)
+        self.parent = parent
+        self.controller = controller
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=0)
+        self.grid_columnconfigure(2, weight=0)
+        self.grid_columnconfigure(3, weight=0)
+        self.grid_columnconfigure(4, weight=0)
+        self.array = None
+        self.generate_array()
+        button2 = ttk.Button(self, text="Retourner au menu", command=lambda: controller.show_frame(StartPage))
+        button2.grid(column=8, row=49)
+
+    def generate_array(self):
+        info = self.controller.db.get_customer("customer.customer_id, person.last_name, person.first_name,"
+                                               "person.address_id, customer.evaluation",
+                                               "INNER JOIN person ON person.person_id = customer.person_id")
+        address = "( "
+        count = 1
+        for i in info:
+            self.grid_rowconfigure(count, weight=0)
+            address += str(i[3]) + ", "
+            count += 1
+        if address is not "( ":
+            address = address[0: -2]
+            address += ")"
+            address = self.controller.db.get_address(condition="address_id in " + address)
+        else:
+            address = "()"
+        columns = ["Numero", "Last name", "First name", "Address", "Evaluation"]
+
+        self.array = tiny_esa_embedded.DataArray(self, self.controller, info, columns, address)
+        self.array.grid(column=0, row=1, columnspan=25, rowspan=count)
+
+    def update(self):
+        self.array.destroy()
+        self.generate_array()
+
+    def myupdate(self, customer_id):
+        self.controller.load_element("customer", customer_id)
+        self.controller.show_frame(CreateCustomer)
+
+    def consult(self, customer_id):
+        print(str(customer_id))
+
+    def reset_frame(self):
+        pass
+
+
+class UserList(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent, padx=10, pady=10)
+        self.parent = parent
+        self.controller = controller
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=0)
+        self.grid_columnconfigure(2, weight=0)
+        self.grid_columnconfigure(3, weight=0)
+        self.grid_columnconfigure(4, weight=0)
+        self.array = None
+        self.generate_array()
+        button2 = ttk.Button(self, text="Retourner au menu", command=lambda: controller.show_frame(StartPage))
+        button2.grid(column=8, row=49)
+
+    def update(self):
+        self.array.destroy()
+        self.generate_array()
+
+    def generate_array(self):
+        info = self.controller.db.get_user("user.user_id, person.last_name, person.first_name, person.address_id",
+                                           "INNER JOIN person ON person.person_id = user.person_id")
+        address = "( "
+        count = 1
+        for i in info:
+            self.grid_rowconfigure(count, weight=0)
+            address += str(i[3]) + ", "
+            count += 1
+        if address is not "( ":
+            address = address[0: -2]
+            address += ")"
+            address = self.controller.db.get_address(condition="address_id in " + address)
+        else:
+            address = "()"
+        columns = ["Numero", "Last name", "First name", "Address"]
+
+        self.array = tiny_esa_embedded.DataArray(self, self.controller, info, columns, address)
+        self.array.grid(column=0, row=1, columnspan=25, rowspan=count)
+
+    def myupdate(self, user_id):
+        self.controller.load_element("user", user_id)
+        self.controller.show_frame(CreateUser)
+
+    def consult(self, user_id):
+        print(str(user_id))
+
+    def reset_frame(self):
+        pass
+
+
+class BillList(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent, padx=10, pady=10)
+        self.parent = parent
+        self.controller = controller
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=0)
+        self.grid_columnconfigure(2, weight=0)
+        self.grid_columnconfigure(3, weight=0)
+        self.grid_columnconfigure(4, weight=0)
+
+        info = self.controller.db.get_bill("bill.bill_id, bill.last_name, person.first_name, person.address_id",
+                                           "INNER JOIN person ON person.person_id = user.person_id")
+        address = "( "
+        count = 1
+        for i in info:
+            self.grid_rowconfigure(count, weight=0)
+            address += str(i[3]) + ", "
+            count += 1
+        if address is not "( ":
+            address = address[0: -2]
+            address += ")"
+            address = self.controller.db.get_address(condition="address_id in " + address)
+        else:
+            address = "()"
+        columns = ["Numero", "Last name", "First name", "Address"]
+
+        self.array = tiny_esa_embedded.DataArray(self, self.controller, info, columns, address)
+        self.array.grid(column=0, row=1, columnspan=25, rowspan=count)
+
+    def reset_frame(self):
+        pass
