@@ -32,21 +32,24 @@ class DataArray(tk.Frame):
         self.grid_rowconfigure(0, weight=1)
         ttk.Separator(self, orient="horizontal").grid(row=0, columnspan=2*(len(columns)+2)+1, sticky="NSWE")
         ttk.Separator(self, orient="vertical").grid(column=0, sticky="NSWE")
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=0)
         self.consult_buttons = {}
         self.update_buttons = {}
         column = 0
         row = 1
         for c_name in columns:
-            self.grid_columnconfigure(column, weight=1)
+            self.grid_columnconfigure(column, weight=0)
             ttk.Separator(self, orient="vertical").grid(row=row, column=column, sticky="NSWE")
             column += 1
             if c_name is "Address":
                 tmp = ttk.Label(self, text=c_name, font=LARGE_FONT, width=50, anchor="center")
                 tmp.grid(column=column, row=row, sticky="NSWE")
-            elif c_name is "Numero":
-                tmp = ttk.Label(self, text="Numero", font=LARGE_FONT, width=10, anchor="center")
+            elif c_name in ("Invoiced", "Paid", "Numero"):
+                tmp = ttk.Label(self, text=c_name, font=LARGE_FONT, width=7, anchor="center")
+                tmp.grid(column=column, row=row, sticky="NSWE")
+            elif c_name in ("Customer", "User"):
+                tmp = ttk.Label(self, text=c_name, font=LARGE_FONT, width=25, anchor="center")
                 tmp.grid(column=column, row=row, sticky="NSWE")
             else:
                 tmp = ttk.Label(self, text=c_name, font=LARGE_FONT, width=15, anchor="center")
@@ -67,7 +70,7 @@ class DataArray(tk.Frame):
             column = 0
             myid = -1
             for data in elem:
-                self.grid_columnconfigure(column, weight=1)
+                self.grid_columnconfigure(column, weight=0)
                 ttk.Separator(self, orient="vertical").grid(row=row, column=2*column, sticky="NSWE")
                 if columns[column] is "Address":
                     ad = models.Address.address_from_database(address[elem_id])
@@ -78,6 +81,12 @@ class DataArray(tk.Frame):
                     tmp.grid(column=(2*column)+1, row=row, sticky="NSWE")
                     if columns[column] is columns[0]:
                      myid = data
+                elif columns[column] in ("Invoiced", "Paid"):
+                    color = "red"
+                    if data is "True":
+                        color = "green"
+                    tmp = ttk.Label(self, text="", font=LARGE_FONT, width=7, background="red")
+                    tmp.grid(column=(2 * column) + 1, row=row, sticky="NSWE")
                 else:
                     tmp = ttk.Label(self, text=data, font=LARGE_FONT, width=15, background="white")
                     tmp.grid(column=(2*column)+1, row=row, sticky="NSWE")

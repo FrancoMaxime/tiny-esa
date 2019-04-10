@@ -20,6 +20,7 @@
 
 import sqlite3
 import os
+from tiny_esa.models import models
 
 
 class ProjectDatabase(object):
@@ -115,6 +116,14 @@ class ProjectDatabase(object):
         else:
             print("ERROOOOOR remove address sans ID")
 
+    def address_db_to_object(self, address_id):
+        info = self.get_address(condition="address_id = " + str(address_id))
+        tmp = None
+        if len(info) > 0:
+            tmp = models.Address(info[0][1], info[0][2], info[0][3], info[0][4])
+            tmp.id = info[0][0]
+        return tmp
+
     def add_person(self, person):
         if person.address.id < 0:
             self.add_address(person.address)
@@ -151,6 +160,28 @@ class ProjectDatabase(object):
         else:
             self.add_person(person)
             print("ERROOOOOR update person sans ID")
+
+    def person_db_to_object(self, person_id):
+        info = self.get_person(condition="person_id = "+str(person_id))
+        tmp = None
+        if len(info) > 0:
+            tmp_address = self.address_db_to_object(info[0][1])
+            tmp = models.Person(tmp_address, info[0][2], info[0][3], info[0][4], info[0][6], info[0][5], info[0][7],
+                                info[0][8])
+            tmp.id = info[0][0]
+        return tmp
+
+    def user_db_to_object(self, user_id):
+        info = self.get_user(condition="user_id = " + str(user_id))
+        tmp = None
+        if len(info) > 0:
+            tmp_p = self.person_db_to_object(info[0][1])
+            if tmp_p is not None:
+                tmp = models.User(tmp_p, "tmp")
+                tmp.set_password(info[0][2])
+                tmp.id = info[0][0]
+
+        return tmp
 
     def add_user(self, user):
         if user.person.id < 0:
@@ -195,6 +226,17 @@ class ProjectDatabase(object):
             self.update_customer(customer)
             print("Error add Customer")
 
+    def customer_db_to_object(self, customer_id):
+        info = self.get_customer(condition="customer_id = " + str(customer_id))
+        tmp = None
+        if len(info) > 0:
+            tmp_p = self.person_db_to_object(info[0][1])
+            if tmp_p is not None:
+                tmp = models.Customer(tmp_p, info[0][2])
+                tmp.id = info[0][0]
+
+        return tmp
+
     def get_customer(self, row="*", join=None, condition=None):
         return self.get_object("customer", row, join, condition)
 
@@ -216,6 +258,17 @@ class ProjectDatabase(object):
             self.remove_person(customer.person)
         else:
             print("EROOOR remove customer")
+
+    def company_db_to_object(self, company_id=1):
+        info = self.get_company(condition="company_id = " + str(company_id))
+        tmp = None
+        if len(info) > 0:
+            tmp_u = self.user_db_to_object(info[0][2])
+            tmp_a = self.address_db_to_object(info[0][1])
+            tmp = models.Company(tmp_a, tmp_u, info[0][3], info[0][4], info[0][5], info[0][6], info[0][7], info[0][8],
+                                 info[0][9])
+            tmp.id = info[0][0]
+        return tmp
 
     def add_company(self, company):
         if company.id < 0:
@@ -259,14 +312,13 @@ class ProjectDatabase(object):
         else:
             print("ERROOOR REMOVE company")
 
-    def get_bill(self, row="*", join=None,condition=None):
+    def get_bill(self, row="*", join=None, condition=None):
         return self.get_object("bill", row, join, condition)
 
     def add_bill(self, bill):
         if bill.id < 0:
             self.add_customer(bill.customer)
             self.add_user(bill.user)
-        if bill.id < 0:
             self.c.execute("INSERT INTO bill(customer_id, user_id, num_ref, billing_date, due_date, tva_rate, paid, " +
                            "invoiced) VALUES (" + bill.__str__() + ")")
             bill.id = int(self.get_bill(row='max(bill_id)')[0][0])
@@ -276,6 +328,19 @@ class ProjectDatabase(object):
         else:
             self.update_bill(bill)
 
+    def bill_db_to_object(self, bill_id):
+        info = self.get_bill(condition="bill_id = " + str(bill_id))
+        tmp = None
+        if len(info) > 0:
+            tmp_c = self.customer_db_to_object(info[0][1])
+            tmp_u = self.user_db_to_object(info[0][2])
+            tmp = models.Bill(tmp_c, tmp_u, info[0][3], info[0][4], info[0][5], info[0][6], info[0][7], info[0][8])
+            tmp.id = info[0][0]
+            inf = self.get_product(condition="bill_id = " + str(bill_id))
+            for i in inf:
+                tmp.add_product(self.product_db_to_object(i[0], tmp))
+        return tmp
+
     def update_bill(self, bill):
         if bill.id > 0:
             self.update_customer(bill.customer)
@@ -283,8 +348,9 @@ class ProjectDatabase(object):
             self.c.execute("UPDATE bill SET customer_id = " + str(bill.customer.id) + ", user_id = "
                            + str(bill.user.id) + ", num_ref = '" + bill.num_ref.replace("'", "''") +
                            "', billing_date = '" + bill.billing_date.replace("'", "''") + "', due_date = '" +
-                           bill.due_date.replace("'", "''") + "', tva_rate = '" + bill.tva_rate.replace("'", "''") +
-                           "', paid = '" + str(bill.paid) + "', invoiced = '" + str(bill.invoiced) + "'")
+                           bill.due_date.replace("'", "''") + "', tva_rate = '" + str(bill.tva_rate).replace("'", "''") +
+                           "', paid = '" + str(bill.paid) + "', invoiced = '" + str(bill.invoiced) +
+                           "' WHERE bill_id = " + str(bill.id))
             for product in bill.products.values():
                 self.update_product(product)
             self.conn.commit()
@@ -313,7 +379,7 @@ class ProjectDatabase(object):
             self.update_product(product)
 
     def update_product(self, product):
-        if product.bill.id > 0:
+        if product.id > 0:
             self.c.execute("UPDATE product SET description = '" + product.description.replace("'", "''")
                            + "', amount = " + str(product.amount) + ", price_ht = " + str(product.price_ht) +
                            " WHERE product_id = " + str(product.id))
@@ -328,3 +394,12 @@ class ProjectDatabase(object):
             self.conn.commit()
         else:
             print("ERROOOR REMOVE product")
+
+    def product_db_to_object(self,product_id, bill):
+        info = self.get_product(condition="product_id = " + str(product_id))
+        tmp = None
+        if len(info) > 0 and bill.id == info[0][1]:
+            tmp = models.Product(bill, info[0][2], info[0][3], info[0][4])
+            tmp.id = info[0][0]
+        return tmp
+

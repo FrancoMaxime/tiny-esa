@@ -41,20 +41,25 @@ class TinyESA(tk.Tk):
         self.previous = None
         container = tk.Frame(self)
         container.pack(side="top", fill="both", expand=True)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
+        container.grid_rowconfigure(0, weight=0)
+        container.grid_columnconfigure(0, weight=0)
         self.frames = {}
+        self.company = None
+        self.user = None
+        self.pdf = None
 
         for F in (StartPage, CreateBill, Credit, CreateUser, CreateCustomer, CreateCompany, InstallingPage, SignIn,
-                  CustomerList, UserList):
+                  CustomerList, UserList, BillList):
             frame = F(container, self)
             self.frames[F] = frame
-            frame.grid(row=0, column=0, sticky="nsew")
+            frame.grid(row=0, column=1, sticky="nsew", pady=5)
 
         if len(self.db.get_user()) == 0 or len(self.db.get_company()) == 0:
             self.show_frame(InstallingPage)
         else:
             self.show_frame(SignIn)
+            self.company = self.db.company_db_to_object(1)
+        self.menu = MenuLeft(container, self)
 
     def show_frame(self, cont):
         if self.previous is not None:
@@ -68,6 +73,9 @@ class TinyESA(tk.Tk):
             self.frames[UserList].update()
         elif element == "customer":
             self.frames[CustomerList].update()
+            self.frames[CreateBill].update()
+        elif element == "bill":
+            self.frames[BillList].update()
         else:
             print("ERROOOOOR MY UPDATE ON KEY  : " + element)
 
@@ -76,58 +84,76 @@ class TinyESA(tk.Tk):
             self.frames[CreateUser].load_user(element_id)
         elif key == "customer":
             self.frames[CreateCustomer].load_customer(element_id)
+        elif key == "bill":
+            self.frames[CreateBill].load_bill(element_id)
         else:
             print("ERROOOOOR LOAD ELEMENT ON KEY  : " + element_id)
 
+    def show_menu(self):
+        self.menu.grid(row=0, column=0, sticky="nsew")
 
-class StartPage(tk.Frame):
+
+class MenuLeft(tk.Frame):
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent, padx=10, pady=10)
+        tk.Frame.__init__(self, parent, height=900, padx=10, pady=10, background="blue")
         self.controller = controller
         self.parent = parent
         row = 0
-        label = ttk.Label(self, width=20, text="Start Page", font=LARGE_FONT)
+        label = None
+        if self.controller.company is not None:
+            label = ttk.Label(self, width=20, text=self.controller.company.name, font=LARGE_FONT)
+        else:
+            label = ttk.Label(self, width=20, text=self.controller.company.name, font=LARGE_FONT)
         label.configure(anchor="center")
-        label.grid(column=0, row=row)
+        label.grid(column=0, row=row, pady=5)
         self.grid_rowconfigure(0, weight=0)
         self.grid_columnconfigure(0, weight=0)
         row += 1
 
         cbill = ttk.Button(self, width=20, text="Generate a Bill",
                            command=lambda: controller.show_frame(CreateBill))
-        cbill.grid(column=0, row=row)
+        cbill.grid(column=0, row=row, pady=5)
         self.grid_rowconfigure(1, weight=0)
         row += 1
 
         cuser = ttk.Button(self, width=20, text="Create a new User",
                            command=lambda: controller.show_frame(CreateUser))
-        cuser.grid(column=0, row=row)
+        cuser.grid(column=0, row=row, pady=5)
         self.grid_rowconfigure(2, weight=0)
         row += 1
 
         luser = ttk.Button(self, width=20, text="Consult the users",
                                command=lambda: controller.show_frame(UserList))
-        luser.grid(column=0, row=row)
-        self.grid_rowconfigure(4, weight=0)
+        luser.grid(column=0, row=row, pady=5)
+        self.grid_rowconfigure(3, weight=0)
         row += 1
 
         ccustomer = ttk.Button(self, width=20, text="Create a new customer",
                                command=lambda: controller.show_frame(CreateCustomer))
-        ccustomer.grid(column=0, row=row)
-        self.grid_rowconfigure(3, weight=0)
+        ccustomer.grid(column=0, row=row, pady=5)
+        self.grid_rowconfigure(4, weight=0)
         row += 1
 
         lcustomer = ttk.Button(self, width=20, text="Consult the customers",
                                command=lambda: controller.show_frame(CustomerList))
-        lcustomer.grid(column=0, row=row)
-        self.grid_rowconfigure(4, weight=0)
+        lcustomer.grid(column=0, row=row, pady=5)
+        self.grid_rowconfigure(5, weight=0)
+        row += 1
+
+        list_bill = ttk.Button(self, width=20, text="Consult the bills",
+                               command=lambda: controller.show_frame(BillList))
+        list_bill.grid(column=0, row=row, pady=5)
+        self.grid_rowconfigure(6, weight=0)
         row += 1
 
         credit = ttk.Button(self, width=20, text="Credit",
                             command=lambda: controller.show_frame(Credit))
-        credit.grid(column=0, row=row)
-        self.grid_rowconfigure(5, weight=0)
+        credit.grid(column=0, row=row, pady=5)
+        self.grid_rowconfigure(7, weight=0)
         row += 1
+        label = tk.Label(self, width=20, height=900, text="", font=LARGE_FONT, background="blue")
+        label.configure(anchor="center")
+        label.grid(column=0, row=row, pady=5)
 
     def reset_frame(self):
         pass
@@ -136,70 +162,71 @@ class StartPage(tk.Frame):
 class CreateBill(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent, padx=10, pady=10)
-        self.grid_rowconfigure(50, weight=1)
-        self.grid_columnconfigure(5, weight=1)
         self.controller = controller
+        self.bill = None
+        for i in range(50):
+            self.grid_rowconfigure(i, weight=0)
+        for i in range(10):
+            self.grid_columnconfigure(i, weight=0)
 
-        self.facture_id = tk.StringVar()
-        label_facture_id = ttk.Label(self, text="Facture number : ", font=LARGE_FONT)
-        label_facture_id.grid(column=0, row=1)
-        text_facture_id = ttk.Entry(self, width=12, font=LARGE_FONT, textvariable=self.facture_id)
-        text_facture_id.grid(column=1, row=1)
+        self.client_id = tk.StringVar()
+        label_client_id = ttk.Label(self, text="Client : ", font=LARGE_FONT)
+        label_client_id.grid(column=0, row=1, pady=5, sticky="NSWE")
+        self.lb_facture_id = None
+        self.scrollbar = None
+
+        self.error = tk.StringVar()
+        self.error_label = ttk.Label(self, textvariable=self.error, font=LARGE_FONT, foreground="red", anchor="center")
+        self.error_label.grid(column=0, row=0, columnspan=10, pady=5, sticky="NSWE")
+
+
+        self.generate_customers()
 
         self.ref_id = tk.StringVar()
         label_ref_id = ttk.Label(self, text="Num/Ref : ", font=LARGE_FONT)
-        label_ref_id.grid(column=0, row=2)
+        label_ref_id.grid(column=0, row=2, sticky="NSWE", pady=5)
         text_ref_id = ttk.Entry(self, width=12, font=LARGE_FONT, textvariable=self.ref_id)
-        text_ref_id.grid(column=1, row=2)
+        text_ref_id.grid(column=1, row=2, sticky="NSWE", pady=5)
 
         label_tva = ttk.Label(self, text="TVA :", font=LARGE_FONT)
-        label_tva.grid(column=0, row=3)
+        label_tva.grid(column=0, row=3, sticky="NSWE", pady=5)
         self.tva_value = tk.DoubleVar()
         radio_tva1 = ttk.Radiobutton(self, width=12, text='6%', value=0.06, variable=self.tva_value)
-        radio_tva1.grid(column=1, row=3)
+        radio_tva1.grid(column=1, row=3, sticky="NSWE", pady=5)
         radio_tva2 = ttk.Radiobutton(self, width=12, text='12%', value=0.12, variable=self.tva_value)
-        radio_tva2.grid(column=2, row=3)
+        radio_tva2.grid(column=2, row=3, sticky="NSWE", pady=5)
         radio_tva3 = ttk.Radiobutton(self, width=12, text='21%', value=0.21, variable=self.tva_value)
-        radio_tva3.grid(column=3, row=3)
+        radio_tva3.grid(column=3, row=3, sticky="NSWE", pady=5)
 
         self.date_fact = tk.StringVar()
         self.date_fact.set(str(datetime.datetime.now()).split(' ')[0])
         label_date_fact = ttk.Label(self, text="Date Facturation : ", font=LARGE_FONT)
-        label_date_fact.grid(column=0, row=4)
+        label_date_fact.grid(column=0, row=4, sticky="NSWE", pady=5)
         text_date_fact = ttk.Entry(self, width=12, font=LARGE_FONT, textvariable=self.date_fact)
-        text_date_fact.grid(column=1, row=4)
+        text_date_fact.grid(column=1, row=4, sticky="NSWE", pady=5)
 
         self.date_echeance = tk.StringVar()
         self.date_echeance.set(str(datetime.datetime.now()).split(' ')[0])
         label_date_echeance = ttk.Label(self, text="Date Echeance : ", font=LARGE_FONT)
-        label_date_echeance.grid(column=0, row=5)
+        label_date_echeance.grid(column=0, row=5, sticky="NSWE", pady=5)
         text_date_echeance = ttk.Entry(self, width=12, font=LARGE_FONT, textvariable=self.date_echeance)
-        text_date_echeance.grid(column=1, row=5)
+        text_date_echeance.grid(column=1, row=5, sticky="NSWE", pady=5)
 
-        self.r = 7
+        self.r = 8
         self.tested = []
         self.elements = []
         label_description = ttk.Label(self, text="Description", width=60, font=LARGE_FONT)
-        label_description.grid(column=0, row=self.r - 1)
+        label_description.grid(column=0, row=self.r - 1, sticky="NSWE")
         label_quantite = ttk.Label(self, text="Quantite", width=20, font=LARGE_FONT)
-        label_quantite.grid(column=1, row=self.r - 1)
+        label_quantite.grid(column=1, row=self.r - 1, sticky="NSWE")
         label_puht = ttk.Label(self, text="PU HT", width=20, font=LARGE_FONT)
-        label_puht.grid(column=2, row=self.r - 1)
-        label_totalht = ttk.Label(self, text="Total HT EUR", width=20, font=LARGE_FONT)
-        label_totalht.grid(column=3, row=self.r - 1)
+        label_puht.grid(column=2, row=self.r - 1, sticky="NSWE")
         self.clicked()
+
         btn = ttk.Button(self, text="Ajouter un element", command=self.clicked)
+        btn.grid(column=3, row=7, pady=5, sticky="NSWE")
 
-        btn.grid(column=5, row=4)
-
-        button1 = ttk.Button(self, text="Back to Home",
-                             command=lambda: controller.show_frame(StartPage))
-        button1.grid(column=0, row=49)
-
-        button2 = ttk.Button(self, text="Credits",
-                             command=lambda: controller.show_frame(Credit))
-        button2.grid(column=1, row=49)
-        button3 = ttk.Button(self, text="Generer la facture", command=self.generate)
+        button3 = ttk.Button(self, text="Generer la facture", command=self.generate_bill)
         button3.grid(column=2, row=49)
 
     def clicked(self):
@@ -211,23 +238,147 @@ class CreateBill(tk.Frame):
         self.elements[-1].append(tk.StringVar())
 
         self.tested[-1].append(ttk.Entry(self, width=60, font=LARGE_FONT, textvariable=self.elements[-1][0]))
-        self.tested[-1][0].grid(column=0, row=self.r)
+        self.tested[-1][0].grid(column=0, row=self.r, sticky="NSWE")
 
         self.tested[-1].append(ttk.Entry(self, width=20, font=LARGE_FONT, textvariable=self.elements[-1][1]))
-        self.tested[-1][1].grid(column=1, row=self.r)
-
+        self.tested[-1][1].grid(column=1, row=self.r, sticky="NSWE")
+        self.elements[-1][1].set(0)
+        self.elements[-1][2].set(0)
         self.tested[-1].append(ttk.Entry(self, width=20, font=LARGE_FONT, textvariable=self.elements[-1][2]))
-        self.tested[-1][2].grid(column=2, row=self.r)
+        self.tested[-1][2].grid(column=2, row=self.r, sticky="NSWE")
 
-        self.tested[-1].append(ttk.Entry(self, width=20, font=LARGE_FONT, textvariable=self.elements[-1][3]))
-        self.tested[-1][3].grid(column=3, row=self.r)
         self.r += 1
 
-    def generate(self):
-        print("generate")
+    def generate_bill(self):
+        if len(self.lb_facture_id.curselection()) > 0 and self.ref_id.get() is not "":
+            customer = self.controller.db.customer_db_to_object(self.lb_facture_id.curselection()[0]+1)
+            bill = models.Bill(customer, self.controller.user, self.ref_id.get(), self.date_fact.get(),
+                               self.date_echeance.get(), self.tva_value.get())
+            error = False
+            if self.bill is not None:
+                bill.id = self.bill.id
+                for k, p in self.bill.products.items():
+                    self.controller.db.remove_product(p)
+            for e in self.elements:
+                if e[0].get() is not "" and float(e[1].get()) > 0 and float(e[2].get()) > 0:
+                    p = models.Product(bill, e[0].get(), e[1].get(), e[2].get())
+                    bill.add_product(p)
+                else:
+                    error = True
+
+            if not error:
+                self.controller.db.add_bill(bill)
+                pdf_generation.TinyPDF.generate(bill, self.controller.company)
+                self.controller.observer("bill")
+                return self.controller.show_frame(BillList)
+        self.error.set("Vous avez fait une erreur en créant la facture.")
+
+    def reset_frame(self):
+        self.r = 8
+        for i in self.tested:
+            for j in i:
+                j.destroy()
+        self.tested = []
+        self.elements = []
+        self.clicked()
+        self.bill = None
+
+    def update(self):
+        self.scrollbar.destroy()
+        self.lb_facture_id.destroy()
+        self.generate_customers()
+        self.r = 8
+        self.tested = []
+        self.elements = []
+        self.clicked()
+        self.bill = None
+
+    def generate_customers(self):
+        self.lb_facture_id = tk.Listbox(self, width=25, height=4, font=LARGE_FONT)
+        self.scrollbar = ttk.Scrollbar(self)
+
+        info = self.controller.db.get_customer()
+
+        for cust in info:
+            inf = self.controller.db.get_person(condition="person_id = " + str(cust[1]))
+            self.lb_facture_id.insert(cust[0], inf[0][2] + " " + inf[0][3])
+
+        self.lb_facture_id.grid(column=1, row=1, sticky="WE")
+        self.scrollbar.grid(column=2, row=1, sticky='wns')
+        self.lb_facture_id.config(yscrollcommand=self.scrollbar.set)
+        self.scrollbar.config(command=self.lb_facture_id.yview)
+
+    def load_bill(self, bill_id):
+        self.bill = self.controller.db.bill_db_to_object(bill_id)
+        print(self.bill)
+        self.r = 8
+        for i in self.tested:
+            for j in i:
+                j.destroy()
+        self.tested = []
+        self.elements = []
+
+        self.lb_facture_id.selection_set(self.bill.customer.id-1)
+
+        self.tva_value.set(float(self.bill.tva_rate))
+
+        self.ref_id.set(self.bill.num_ref)
+        self.date_fact.set(self.bill.billing_date)
+        self.date_echeance.set(self.bill.due_date)
+
+        for k, v in self.bill.products.items():
+            self.tested.append([])
+            self.elements.append([])
+            self.elements[-1].append(tk.StringVar())
+            self.elements[-1].append(tk.StringVar())
+            self.elements[-1].append(tk.StringVar())
+            self.elements[-1].append(tk.StringVar())
+
+            self.tested[-1].append(ttk.Entry(self, width=60, font=LARGE_FONT, textvariable=self.elements[-1][0]))
+            self.tested[-1][0].grid(column=0, row=self.r, sticky="NSWE")
+
+            self.tested[-1].append(ttk.Entry(self, width=20, font=LARGE_FONT, textvariable=self.elements[-1][1]))
+            self.tested[-1][1].grid(column=1, row=self.r, sticky="NSWE")
+
+            self.tested[-1].append(ttk.Entry(self, width=20, font=LARGE_FONT, textvariable=self.elements[-1][2]))
+            self.tested[-1][2].grid(column=2, row=self.r, sticky="NSWE")
+
+            self.tested[-1].append(ttk.Entry(self, width=20, font=LARGE_FONT, textvariable=self.elements[-1][3]))
+            self.tested[-1][3].grid(column=3, row=self.r, sticky="NSWE")
+            self.r += 1
+
+            self.elements[-1][0].set(v.description)
+            self.elements[-1][1].set(v.amount)
+            self.elements[-1][2].set(v.price_ht)
 
 
 class Credit(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        title_label = ttk.Label(self, text="Tiny ESA", font=LARGE_FONT, anchor="center", width=120)
+        title_label.grid(column=0, row=0, sticky='NSWE')
+        quote = """\n\nCopyright (C) 2018 Maxime Franco\n\n        
+        This program is free software: you can redistribute it and/or modify\n
+        it under the terms of the GNU Affero General Public License as\n
+        published by the Free Software Foundation, either version 3 of the\n
+        License, or (at your option) any later version.\n
+        \n
+        This program is distributed in the hope that it will be useful,\n
+        but WITHOUT ANY WARRANTY; without even the implied warranty of\n
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n
+        GNU Affero General Public License for more details.\n
+        \n
+        You should have received a copy of the GNU Affero General Public License\n
+        along with this program.  If not, see <http://www.gnu.org/licenses/>"""
+        text1 = tk.Message(self, text=quote)
+        text1.grid(column=0, row=3, sticky='NSWE')
+
+    def reset_frame(self):
+        pass
+
+
+class StartPage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -242,14 +393,17 @@ class Credit(tk.Frame):
                              command=lambda: controller.show_frame(CreateBill))
         button2.pack()
 
+    def reset_frame(self):
+        pass
+
 
 class CreateUser(tk.Frame):
     def __init__(self, parent, controller, embedded=False):
         tk.Frame.__init__(self, parent, padx=10, pady=10)
         self.controller = controller
         self.embedded = embedded
-        label = ttk.Label(self, text="Creation of a new user", font=LARGE_FONT, foreground="blue")
-        label.grid(column=0, row=1, pady=5)
+        label = ttk.Label(self, text="Creation of a new user", font=LARGE_FONT, anchor="center")
+        label.grid(column=2, row=1, pady=5)
         if not self.embedded:
             self.error = tk.StringVar()
             self.error_label = ttk.Label(self, textvariable=self.error, font=LARGE_FONT, foreground="red")
@@ -272,8 +426,6 @@ class CreateUser(tk.Frame):
 
     def generate_user(self):
         person = self.person.generate_person()
-        print("ensuite")
-        print(person.timestamp)
         user = models.User(person, self.password.get())
         if user.is_sanitized() and len(self.password.get()) > 7:
             if self.user is None:
@@ -452,6 +604,7 @@ class InstallingPage(tk.Frame):
             self.controller.company = self.i_element.generate_company(self.user)
             self.controller.user = self.user
             self.controller.show_frame(StartPage)
+            self.controller.show_menu()
 
     def reset_frame(self):
         pass
@@ -496,6 +649,8 @@ class SignIn(tk.Frame):
         if len(person) > 0:
             user = self.controller.db.get_user(row="*", condition="person_id = " + str(person[0][0]))
             if len(user) > 0 and user[0][2] == password.encrypt(self.password.get(), person[0][7]):
+                self.controller.show_menu()
+                self.controller.user = self.controller.db.user_db_to_object(user[0][0])
                 self.controller.show_frame(StartPage)
             else:
                 config_error = True
@@ -627,25 +782,40 @@ class BillList(tk.Frame):
         self.grid_columnconfigure(2, weight=0)
         self.grid_columnconfigure(3, weight=0)
         self.grid_columnconfigure(4, weight=0)
+        self.array = None
+        self.generate_array()
+        button2 = ttk.Button(self, text="Retourner au menu", command=lambda: controller.show_frame(StartPage))
+        button2.grid(column=8, row=49)
 
-        info = self.controller.db.get_bill("bill.bill_id, bill.last_name, person.first_name, person.address_id",
-                                           "INNER JOIN person ON person.person_id = user.person_id")
-        address = "( "
-        count = 1
+    def update(self):
+        print("flip")
+        self.array.destroy()
+        self.generate_array()
+
+    def generate_array(self):
+        info = self.controller.db.get_bill(row="bill.bill_id, person.last_name, person.first_name,"
+                                               "p2.last_name, p2.first_name, bill.due_date,"
+                                               "bill.invoiced, bill.paid",
+                                           join="INNER JOIN user ON bill.user_id = user.user_id INNER JOIN person ON "
+                                                "person.person_id = user.person_id INNER JOIN customer ON"
+                                                " bill.customer_id = customer.customer_id INNER JOIN person as p2 ON"
+                                                " customer.person_id = p2.person_id")
+
+        columns = ["Numero", "User", "Customer", "Due date", "Invoiced", "Paid"]
+        inf = []
         for i in info:
-            self.grid_rowconfigure(count, weight=0)
-            address += str(i[3]) + ", "
-            count += 1
-        if address is not "( ":
-            address = address[0: -2]
-            address += ")"
-            address = self.controller.db.get_address(condition="address_id in " + address)
-        else:
-            address = "()"
-        columns = ["Numero", "Last name", "First name", "Address"]
+            inf.append([i[0], i[2] + " " + i[1], i[4] + " " + i[3], i[5], i[6], i[7]])
 
-        self.array = tiny_esa_embedded.DataArray(self, self.controller, info, columns, address)
-        self.array.grid(column=0, row=1, columnspan=25, rowspan=count)
+        self.array = tiny_esa_embedded.DataArray(self, self.controller, inf, columns)
+        self.array.grid(column=0, row=1, columnspan=25, rowspan=len(inf))
+
+    def myupdate(self, bill_id):
+        self.controller.load_element("bill", bill_id)
+        self.controller.show_frame(CreateBill)
+
+    def consult(self, user_id):
+        print(str(user_id))
 
     def reset_frame(self):
         pass
+

@@ -114,7 +114,6 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(self.db.get_person(), [])
         self.assertEqual(self.db.get_customer(), [])
 
-
     def test_db_company(self):
         address_u = models.Address("street_u", "number_u", "postal_code_u", "city_u")
         address_c = models.Address("street_c", "number_c", "postal_code_c", "city_c")
@@ -195,6 +194,82 @@ class MyTestCase(unittest.TestCase):
         self.db.remove_bill(bill)
         self.assertEqual(self.db.get_bill(), [])
         self.assertEqual(self.db.get_product(), [])
+
+    def test_db_get_object(self):
+        address_u = models.Address("street", "number", "postal_code", "city")
+        self.db.add_address(address_u)
+        tmp = self.db.address_db_to_object(1)
+        self.assertEqual(tmp.street, address_u.street)
+        self.assertEqual(tmp.number, address_u.number)
+        self.assertEqual(tmp.postal_code, address_u.postal_code)
+        self.assertEqual(tmp.city, address_u.city)
+        self.assertEqual(1, address_u.id)
+
+        person_u = models.Person(address_u, "last_name_u", "first_name_u", "gsm_u", "phone_u", "mail_u", "12345",
+                                 "remark_u")
+        user = models.User(person_u, "password")
+
+        self.db.add_user(user)
+        tmp_p = self.db.person_db_to_object(1)
+        self.assertEqual(person_u.last_name, tmp_p.last_name)
+        self.assertEqual(person_u.first_name, tmp_p.first_name)
+        self.assertEqual(person_u.gsm, tmp_p.gsm)
+        self.assertEqual(person_u.phone, tmp_p.phone)
+        self.assertEqual(person_u.mail, tmp_p.mail)
+        self.assertEqual(person_u.timestamp, tmp_p.timestamp)
+        self.assertEqual(person_u.remark, tmp_p.remark)
+        self.assertEqual(tmp_p.id, 1)
+
+        tmp_u = self.db.user_db_to_object(1)
+        self.assertEqual(user.id, 1)
+        self.assertEqual(user.password, tmp_u.password)
+
+        address_c = models.Address("street", "number", "postal_code", "city")
+        person_c = models.Person(address_c, "last_name_c", "first_name_c", "gsm_c", "phone_c", "mail_c", "12345",
+                                 "remark_c")
+        customer = models.Customer(person_c, "evaluation")
+
+        self.db.add_customer(customer)
+        tmp_c = self.db.customer_db_to_object(1)
+        self.assertEqual(tmp_c.id, 1)
+        self.assertEqual(customer.evaluation, tmp_c.evaluation)
+        self.assertEqual(tmp_c.person.id, 2)
+
+        company = models.Company(address_c, user, "gsm", "phone", "mail", "tva_number", "iban", "bic", "name")
+
+        self.db.add_company(company)
+
+        tmp_company = self.db.company_db_to_object(1)
+        self.assertEqual(tmp_company.name, company.name)
+        self.assertEqual(tmp_company.address.street, company.address.street)
+        self.assertEqual(tmp_company.address.id, company.address.id)
+        self.assertEqual(tmp_company.user.password, company.user.password)
+        self.assertEqual(tmp_company.user.id, company.user.id)
+        self.assertEqual(tmp_company.bic, company.bic)
+        self.assertEqual(tmp_company.iban, company.iban)
+        self.assertEqual(tmp_company.tva_number, company.tva_number)
+        self.assertEqual(tmp_company.mail, company.mail)
+        self.assertEqual(tmp_company.phone, company.phone)
+        self.assertEqual(tmp_company.gsm, company.gsm)
+
+        bill = models.Bill(customer, user, "num_ref", "billing_date", "due_date", "tva_rate")
+        for i in range(5):
+            p = models.Product(bill, "description_" + str(i), i + 1, 50.00)
+            bill.add_product(p)
+        self.db.add_bill(bill)
+
+        tmp_b = self.db.bill_db_to_object(1)
+        self.assertEqual(bill.customer.id, tmp_b.customer.id)
+        self.assertEqual(bill.user.id, tmp_b.user.id)
+        self.assertEqual(bill.num_ref, tmp_b.num_ref)
+        self.assertEqual(bill.billing_date, tmp_b.billing_date)
+        self.assertEqual(bill.due_date, tmp_b.due_date)
+        self.assertEqual(bill.tva_rate, tmp_b.tva_rate)
+
+        for k in tmp_b.products.keys():
+            self.assertEqual(bill.products[tmp_b.products[k].description].description, tmp_b.products[k].description)
+            self.assertEqual(bill.products[tmp_b.products[k].description].amount, tmp_b.products[k].amount)
+            self.assertEqual(bill.products[tmp_b.products[k].description].price_ht, tmp_b.products[k].price_ht)
 
 
 if __name__ == '__main__':

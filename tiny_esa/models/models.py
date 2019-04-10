@@ -109,6 +109,12 @@ class Address(FrozenClass):
     def address_from_database(data):
         return Address(data[1], data[2], data[3], data[4], data[0])
 
+    def get_full_address(self):
+        return self.number + ", " + self.street + "."
+
+    def get_full_city(self):
+        return self.postal_code + " " + self.city
+
 
 class Person(FrozenClass):
     def __init__(self, address, last_name, first_name, gsm, phone, mail, timestamp, remark=''):
@@ -198,6 +204,15 @@ class Person(FrozenClass):
                and self.first_name != "" and self. mail != "" and self.timestamp != 0 and self.phone != ""\
                and self.gsm != ""
 
+    def get_full_name(self):
+        return self.last_name + " " + self.first_name
+
+    def get_bill_info(self):
+        tmp = self.get_full_name() + "\n"
+        tmp += self.address.get_full_address() + "\n"
+        tmp += self.address.get_full_city()
+        return tmp
+
 
 class User(FrozenClass):
     def __init__(self, person, pwd):
@@ -237,6 +252,9 @@ class User(FrozenClass):
 
     def is_sanitized(self):
         return FrozenClass.is_sanitized(self) and self.person.is_sanitized() and self.password != ""
+
+    def set_password(self, password):
+        self.__password = password
 
 
 class Customer(FrozenClass):
@@ -381,8 +399,9 @@ class Bill(FrozenClass):
         self._freeze()
 
     def __str__(self):
-        return str(self.customer.id) + ", " + str(self.user.id) + ", '" + self.num_ref + "', '" + self.billing_date \
-            + "', '" + self.due_date + "', '" + self.tva_rate + "', '" + str(self.paid) + "', '" + \
+        print(self.invoiced)
+        return str(self.customer.id) + ", " + str(self.user.id) + ", '" + str(self.num_ref) + "', '" + self.billing_date \
+            + "', '" + self.due_date + "', '" + str(self.tva_rate) + "', '" + str(self.paid) + "', '" + \
             str(self.invoiced) + "'"
 
     @property
@@ -450,7 +469,10 @@ class Bill(FrozenClass):
         self.__products = value
 
     def add_product(self, p):
-        self.__products[p.id] = p
+        if p.id is not -1:
+            self.__products[p.id] = p
+        else :
+            self.__products[p.description] = p
 
     def remove_product(self, p):
         self.__products.pop(p.id)
