@@ -36,6 +36,11 @@ class DataArray(tk.Frame):
         self.grid_rowconfigure(1, weight=0)
         self.consult_buttons = {}
         self.update_buttons = {}
+        self.invoiced_button = {}
+        self.paid_button = {}
+        self.s = ttk.Style()
+        self.s.configure('kim.TButton', background="green")
+        self.s.configure('jos.TButton', background="red")
         column = 0
         row = 1
         for c_name in columns:
@@ -82,11 +87,19 @@ class DataArray(tk.Frame):
                     if columns[column] is columns[0]:
                      myid = data
                 elif columns[column] in ("Invoiced", "Paid"):
-                    color = "red"
-                    if data is "True":
-                        color = "green"
-                    tmp = ttk.Label(self, text="", font=LARGE_FONT, width=7, background="red")
-                    tmp.grid(column=(2 * column) + 1, row=row, sticky="NSWE")
+                    color = "jos.TButton"
+                    if data == "True":
+                        color = "kim.TButton"
+                    button = ttk.Button(self, text="modifier", style=color)
+                    button.grid(column=(2 * column) + 1, row=row, sticky="NSWE")
+
+                    if columns[column] is "Invoiced":
+                        self.invoiced_button[button] = myid
+                        button.bind("<Button-1>", self.invoiced_method)
+                    else:
+                        self.paid_button[button] = myid
+                        button.bind("<Button-1>", self.paid_method)
+
                 else:
                     tmp = ttk.Label(self, text=data, font=LARGE_FONT, width=15, background="white")
                     tmp.grid(column=(2*column)+1, row=row, sticky="NSWE")
@@ -114,6 +127,12 @@ class DataArray(tk.Frame):
 
     def consult(self, event):
         self.parent.consult(self.consult_buttons[event.widget])
+
+    def paid_method(self, event):
+        self.parent.paid_method(self.paid_button[event.widget])
+
+    def invoiced_method(self, event):
+        self.parent.invoiced_method(self.invoiced_button[event.widget])
 
 
 class CreateAddress(tk.Frame):

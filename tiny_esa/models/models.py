@@ -471,7 +471,7 @@ class Bill(FrozenClass):
     def add_product(self, p):
         if p.id is not -1:
             self.__products[p.id] = p
-        else :
+        else:
             self.__products[p.description] = p
 
     def remove_product(self, p):

@@ -95,7 +95,8 @@ class TinyESA(tk.Tk):
 
 class MenuLeft(tk.Frame):
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent, height=900, padx=10, pady=10, background="blue")
+        color = "#51AECD"
+        tk.Frame.__init__(self, parent, height=900, padx=10, pady=10, background=color)
         self.controller = controller
         self.parent = parent
         row = 0
@@ -151,7 +152,7 @@ class MenuLeft(tk.Frame):
         credit.grid(column=0, row=row, pady=5)
         self.grid_rowconfigure(7, weight=0)
         row += 1
-        label = tk.Label(self, width=20, height=900, text="", font=LARGE_FONT, background="blue")
+        label = tk.Label(self, width=20, height=900, text="", font=LARGE_FONT, background=color)
         label.configure(anchor="center")
         label.grid(column=0, row=row, pady=5)
 
@@ -258,6 +259,7 @@ class CreateBill(tk.Frame):
             if self.bill is not None:
                 bill.id = self.bill.id
                 for k, p in self.bill.products.items():
+                    print(p.id)
                     self.controller.db.remove_product(p)
             for e in self.elements:
                 if e[0].get() is not "" and float(e[1].get()) > 0 and float(e[2].get()) > 0:
@@ -280,7 +282,12 @@ class CreateBill(tk.Frame):
                 j.destroy()
         self.tested = []
         self.elements = []
+        self.ref_id.set("")
+        self.error.set("")
         self.clicked()
+        self.tva_value.set(0.0)
+        self.date_echeance.set(str(datetime.datetime.now()).split(' ')[0])
+        self.date_fact.set(str(datetime.datetime.now()).split(' ')[0])
         self.bill = None
 
     def update(self):
@@ -332,7 +339,6 @@ class CreateBill(tk.Frame):
             self.elements[-1].append(tk.StringVar())
             self.elements[-1].append(tk.StringVar())
             self.elements[-1].append(tk.StringVar())
-            self.elements[-1].append(tk.StringVar())
 
             self.tested[-1].append(ttk.Entry(self, width=60, font=LARGE_FONT, textvariable=self.elements[-1][0]))
             self.tested[-1][0].grid(column=0, row=self.r, sticky="NSWE")
@@ -343,8 +349,6 @@ class CreateBill(tk.Frame):
             self.tested[-1].append(ttk.Entry(self, width=20, font=LARGE_FONT, textvariable=self.elements[-1][2]))
             self.tested[-1][2].grid(column=2, row=self.r, sticky="NSWE")
 
-            self.tested[-1].append(ttk.Entry(self, width=20, font=LARGE_FONT, textvariable=self.elements[-1][3]))
-            self.tested[-1][3].grid(column=3, row=self.r, sticky="NSWE")
             self.r += 1
 
             self.elements[-1][0].set(v.description)
@@ -813,8 +817,21 @@ class BillList(tk.Frame):
         self.controller.load_element("bill", bill_id)
         self.controller.show_frame(CreateBill)
 
-    def consult(self, user_id):
-        print(str(user_id))
+    def consult(self, bill_id):
+        print(str(bill_id))
+
+    def paid_method(self, bill_id):
+        test = self.controller.db.bill_db_to_object(bill_id)
+        test.paid = True
+        self.controller.db.update_bill(test)
+        self.controller.observer("bill")
+        print(test)
+
+    def invoiced_method(self, bill_id):
+        test = self.controller.db.bill_db_to_object(bill_id)
+        test.invoiced = True
+        self.controller.db.update_bill(test)
+        self.controller.observer("bill")
 
     def reset_frame(self):
         pass

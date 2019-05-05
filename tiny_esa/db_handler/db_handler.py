@@ -390,7 +390,7 @@ class ProjectDatabase(object):
 
     def remove_product(self, product):
         if product.bill.id > 0:
-            self.c.execute("DELETE FROM product WHERE bill_id = " + str(product.id))
+            self.c.execute("DELETE FROM product WHERE product_id = " + str(product.id))
             self.conn.commit()
         else:
             print("ERROOOR REMOVE product")
