@@ -197,7 +197,7 @@ class CreateAddress(tk.Frame):
         self.address = None
 
     def load_address(self, address_id):
-        info = self.parent.parent.controller.db.get_address(condition="address_id = " + str(address_id))
+        info = self.parent.parent.controller.db.get_address(condition="address_id = (?)", values=(str(address_id),))
         self.address = info[0][0]
         self.street.set(info[0][1])
         self.number.set(info[0][2])
@@ -293,7 +293,7 @@ class CreatePerson(tk.Frame):
         self.address_frame.reset_frame()
 
     def load_person(self, person_id):
-        info = self.parent.controller.db.get_person(condition="person_id = " + str(person_id))
+        info = self.parent.controller.db.get_person(condition="person_id = (?)", values=(str(person_id),))
         self.person = info
         self.lastname.set(info[0][2])
         self.firstname.set(info[0][3])

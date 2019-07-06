@@ -104,7 +104,7 @@ class MenuLeft(tk.Frame):
         if self.controller.company is not None:
             label = ttk.Label(self, width=20, text=self.controller.company.name, font=LARGE_FONT)
         else:
-            label = ttk.Label(self, width=20, text=self.controller.company.name, font=LARGE_FONT)
+            label = ttk.Label(self, width=20, text="", font=LARGE_FONT)
         label.configure(anchor="center")
         label.grid(column=0, row=row, pady=5)
         self.grid_rowconfigure(0, weight=0)
@@ -307,7 +307,7 @@ class CreateBill(tk.Frame):
         info = self.controller.db.get_customer()
 
         for cust in info:
-            inf = self.controller.db.get_person(condition="person_id = " + str(cust[1]))
+            inf = self.controller.db.get_person(condition="person_id = (?)", values=(str(cust[1]),))
             self.lb_facture_id.insert(cust[0], inf[0][2] + " " + inf[0][3])
 
         self.lb_facture_id.grid(column=1, row=1, sticky="WE")
@@ -454,7 +454,7 @@ class CreateUser(tk.Frame):
         self.user = None
 
     def load_user(self, user_id):
-        info = self.controller.db.get_user(condition='user_id == ' + str(user_id))
+        info = self.controller.db.get_user(condition='user_id = (?)', values=(str(user_id),))
         self.user = info[0][0]
         self.person.load_person(info[0][1])
 
@@ -511,7 +511,7 @@ class CreateCustomer(tk.Frame):
         self.customer = None
 
     def load_customer(self, customer_id):
-        info = self.controller.db.get_customer(condition='customer_id == ' + str(customer_id))
+        info = self.controller.db.get_customer(condition='customer_id = (?)', values=(str(customer_id),))
         self.customer = info[0][0]
         self.person.load_person(info[0][1])
         self.evaluation.set(info[0][2])
@@ -609,6 +609,7 @@ class InstallingPage(tk.Frame):
             self.controller.user = self.user
             self.controller.show_frame(StartPage)
             self.controller.show_menu()
+            self.controller.observer("user")
 
     def reset_frame(self):
         pass
@@ -648,10 +649,10 @@ class SignIn(tk.Frame):
         button3.grid(column=3, row=5, sticky="NSWE")
 
     def signin(self):
-        person = self.controller.db.get_person(row="*", condition="mail == '" + self.mail.get() + "'")
+        person = self.controller.db.get_person(row="*", condition="mail = (?)", values=(self.mail.get(),))
         config_error = False
         if len(person) > 0:
-            user = self.controller.db.get_user(row="*", condition="person_id = " + str(person[0][0]))
+            user = self.controller.db.get_user(row="*", condition="person_id = (?)", values=(str(person[0][0]),))
             if len(user) > 0 and user[0][2] == password.encrypt(self.password.get(), person[0][7]):
                 self.controller.show_menu()
                 self.controller.user = self.controller.db.user_db_to_object(user[0][0])
@@ -692,16 +693,15 @@ class CustomerList(tk.Frame):
         info = self.controller.db.get_customer("customer.customer_id, person.last_name, person.first_name,"
                                                "person.address_id, customer.evaluation",
                                                "INNER JOIN person ON person.person_id = customer.person_id")
-        address = "( "
+        address = []
         count = 1
         for i in info:
             self.grid_rowconfigure(count, weight=0)
-            address += str(i[3]) + ", "
+            address.append(str(i[3]))
             count += 1
-        if address is not "( ":
-            address = address[0: -2]
-            address += ")"
-            address = self.controller.db.get_address(condition="address_id in " + address)
+        print(address)
+        if len(address) > 0:
+            address = self.controller.db.get_address(condition="address_id in (?)", values=(*address,))
         else:
             address = "()"
         columns = ["Numero", "Last name", "First name", "Address", "Evaluation"]
@@ -747,16 +747,16 @@ class UserList(tk.Frame):
     def generate_array(self):
         info = self.controller.db.get_user("user.user_id, person.last_name, person.first_name, person.address_id",
                                            "INNER JOIN person ON person.person_id = user.person_id")
-        address = "( "
+
+        address = []
         count = 1
         for i in info:
             self.grid_rowconfigure(count, weight=0)
-            address += str(i[3]) + ", "
+            address.append(str(i[3]))
             count += 1
-        if address is not "( ":
-            address = address[0: -2]
-            address += ")"
-            address = self.controller.db.get_address(condition="address_id in " + address)
+        print(address)
+        if len(address) > 0:
+            address = self.controller.db.get_address(condition="address_id in (?)", values=(*address,))
         else:
             address = "()"
         columns = ["Numero", "Last name", "First name", "Address"]
@@ -811,7 +811,11 @@ class BillList(tk.Frame):
             inf.append([i[0], i[2] + " " + i[1], i[4] + " " + i[3], i[5], i[6], i[7]])
 
         self.array = tiny_esa_embedded.DataArray(self, self.controller, inf, columns)
-        self.array.grid(column=0, row=1, columnspan=25, rowspan=len(inf))
+
+        if len(inf) < 1:
+            self.array.grid(column=0, row=1, columnspan=25, rowspan=1)
+        else:
+            self.array.grid(column=0, row=1, columnspan=25, rowspan=len(inf))
 
     def myupdate(self, bill_id):
         self.controller.load_element("bill", bill_id)

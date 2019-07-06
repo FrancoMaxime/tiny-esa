@@ -72,12 +72,12 @@ class ProjectDatabase(object):
                       price_HT REAL NOT NULL, FOREIGN KEY(bill_id) REFERENCES bill(bill_id))''')
         self.conn.commit()
         
-    def get_object(self, table_name, row, join, condition):
-        if condition is not None:
+    def get_object(self, table_name, row, join, condition, values):
+        if condition is not None and values is not None:
             if join is None:
-                self.c.execute("SELECT " + row + " FROM " + table_name + " where " + condition)
+                self.c.execute("SELECT " + row + " FROM " + table_name + " where " + condition, values)
             else:
-                self.c.execute("SELECT " + row + " FROM " + table_name + " " + join + " where " + condition)
+                self.c.execute("SELECT " + row + " FROM " + table_name + " " + join + " where " + condition, values)
             return self.c.fetchall()
         if join is None:
             self.c.execute("SELECT " + row + " FROM " + table_name)
@@ -95,8 +95,8 @@ class ProjectDatabase(object):
             self.update_address(address)
             print(" Error Add address")
 
-    def get_address(self, row='*', join= None, condition=None):
-        return self.get_object("address", row, join, condition)
+    def get_address(self, row='*', join=None, condition=None, values=None):
+        return self.get_object("address", row, join, condition, values)
 
     def update_address(self, address):
         if address.id > 0:
@@ -117,7 +117,7 @@ class ProjectDatabase(object):
             print("ERROOOOOR remove address sans ID")
 
     def address_db_to_object(self, address_id):
-        info = self.get_address(condition="address_id = " + str(address_id))
+        info = self.get_address(condition="address_id = (?)", values=( str(address_id),))
         tmp = None
         if len(info) > 0:
             tmp = models.Address(info[0][1], info[0][2], info[0][3], info[0][4])
@@ -144,8 +144,8 @@ class ProjectDatabase(object):
         else:
             print("EROOOR remove person")
 
-    def get_person(self, row="*", join=None, condition=None):
-        return self.get_object("person", row, join, condition)
+    def get_person(self, row="*", join=None, condition=None, values=None):
+        return self.get_object("person", row, join, condition, values)
 
     def update_person(self, person):
         if person.id > 0:
@@ -162,7 +162,7 @@ class ProjectDatabase(object):
             print("ERROOOOOR update person sans ID")
 
     def person_db_to_object(self, person_id):
-        info = self.get_person(condition="person_id = "+str(person_id))
+        info = self.get_person(condition="person_id =(?) ", values=(str(person_id),))
         tmp = None
         if len(info) > 0:
             tmp_address = self.address_db_to_object(info[0][1])
@@ -194,8 +194,8 @@ class ProjectDatabase(object):
             self.update_user(user)
             print("Error add User")
 
-    def get_user(self, row="*", join=None, condition=None):
-        return self.get_object("user", row, join, condition)
+    def get_user(self, row="*", join=None, condition=None, values=None):
+        return self.get_object("user", row, join, condition, values)
 
     def update_user(self, user):
         if user.id > 0:
@@ -227,7 +227,7 @@ class ProjectDatabase(object):
             print("Error add Customer")
 
     def customer_db_to_object(self, customer_id):
-        info = self.get_customer(condition="customer_id = " + str(customer_id))
+        info = self.get_customer(condition="customer_id = (?)", values=(str(customer_id),))
         tmp = None
         if len(info) > 0:
             tmp_p = self.person_db_to_object(info[0][1])
@@ -237,8 +237,8 @@ class ProjectDatabase(object):
 
         return tmp
 
-    def get_customer(self, row="*", join=None, condition=None):
-        return self.get_object("customer", row, join, condition)
+    def get_customer(self, row="*", join=None, condition=None, values=None):
+        return self.get_object("customer", row, join, condition, values)
 
     def update_customer(self, customer):
         if customer.id > 0:
@@ -260,7 +260,7 @@ class ProjectDatabase(object):
             print("EROOOR remove customer")
 
     def company_db_to_object(self, company_id=1):
-        info = self.get_company(condition="company_id = " + str(company_id))
+        info = self.get_company(condition="company_id = (?)", values=(str(company_id),))
         tmp = None
         if len(info) > 0:
             tmp_u = self.user_db_to_object(info[0][2])
@@ -284,8 +284,8 @@ class ProjectDatabase(object):
             self.update_company(company)
             print("Error Add company")
 
-    def get_company(self, row="*", join=None, condition=None):
-        return self.get_object("company", row, join, condition)
+    def get_company(self, row="*", join=None, condition=None, values=None):
+        return self.get_object("company", row, join, condition, values)
 
     def update_company(self, company):
         if company.id > 0:
@@ -312,8 +312,8 @@ class ProjectDatabase(object):
         else:
             print("ERROOOR REMOVE company")
 
-    def get_bill(self, row="*", join=None, condition=None):
-        return self.get_object("bill", row, join, condition)
+    def get_bill(self, row="*", join=None, condition=None, values=None):
+        return self.get_object("bill", row, join, condition, values)
 
     def add_bill(self, bill):
         if bill.id < 0:
@@ -329,7 +329,7 @@ class ProjectDatabase(object):
             self.update_bill(bill)
 
     def bill_db_to_object(self, bill_id):
-        info = self.get_bill(condition="bill_id = " + str(bill_id))
+        info = self.get_bill(condition="bill_id = (?)", values=(str(bill_id),))
         tmp = None
         if len(info) > 0:
             tmp_c = self.customer_db_to_object(info[0][1])
@@ -366,8 +366,8 @@ class ProjectDatabase(object):
         else:
             print("ERROOOR REMOVE bill")
 
-    def get_product(self, row="*", join=None, condition=None):
-        return self.get_object("product", row, join, condition)
+    def get_product(self, row="*", join=None, condition=None, values=None):
+        return self.get_object("product", row, join, condition, values)
 
     def add_product(self, product):
         if product.id < 0 :
@@ -395,8 +395,8 @@ class ProjectDatabase(object):
         else:
             print("ERROOOR REMOVE product")
 
-    def product_db_to_object(self,product_id, bill):
-        info = self.get_product(condition="product_id = " + str(product_id))
+    def product_db_to_object(self, product_id, bill):
+        info = self.get_product(condition="product_id = (?)", values=(str(product_id),))
         tmp = None
         if len(info) > 0 and bill.id == info[0][1]:
             tmp = models.Product(bill, info[0][2], info[0][3], info[0][4])
