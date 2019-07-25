@@ -102,7 +102,7 @@ class ProjectDatabase(object):
         if address.id > 0:
             self.c.execute("UPDATE address SET street = '" + address.street.replace("'", "''")+"', number = '" +
                            address.number.replace("'", "''") + "', postal_code = '" +
-                           address.postal_code.replace("'", "''") + "', city = '" +address.city.replace("'", "''")
+                           address.postal_code.replace("'", "''") + "', city = '" + address.city.replace("'", "''")
                            + "' WHERE address_id = " + str(address.id))
             self.conn.commit()
         else:
@@ -111,7 +111,7 @@ class ProjectDatabase(object):
         
     def remove_address(self, address):
         if address.id > 0:
-            self.c.execute("DELETE FROM address WHERE address_id = " + str(address.id))
+            self.c.execute("DELETE FROM address WHERE address_id = (?)", (str(address.id), ))
             self.conn.commit()
         else:
             print("ERROOOOOR remove address sans ID")
@@ -138,7 +138,7 @@ class ProjectDatabase(object):
 
     def remove_person(self, person):
         if person.id > 0:
-            self.c.execute("DELETE FROM person WHERE person_id = " + str(person.id))
+            self.c.execute("DELETE FROM person WHERE person_id = (?)", (str(person.id), ))
             self.conn.commit()
             self.remove_address(person.address)
         else:
@@ -209,7 +209,7 @@ class ProjectDatabase(object):
 
     def remove_user(self, user):
         if user.id > 0:
-            self.c.execute("DELETE FROM user WHERE user_id = " + str(user.id))
+            self.c.execute("DELETE FROM user WHERE user_id = (?)", (str(user.id), ))
             self.conn.commit()
             self.remove_person(user.person)
         else:
@@ -253,7 +253,7 @@ class ProjectDatabase(object):
 
     def remove_customer(self, customer):
         if customer.id > 0:
-            self.c.execute("DELETE FROM customer WHERE customer_id = " + str(customer.id))
+            self.c.execute("DELETE FROM customer WHERE customer_id = (?)", (str(customer.id), ))
             self.conn.commit()
             self.remove_person(customer.person)
         else:
@@ -277,7 +277,7 @@ class ProjectDatabase(object):
             self.add_user(company.user)
         if company.id < 0:
             self.c.execute("INSERT INTO company(address_id, user_id, gsm,phone, mail, tva_number, iban, bic, name) "
-                           + "VALUES (" + company.__str__()+ ")")
+                           + "VALUES (" + company.__str__() + ")")
             self.conn.commit()
             company.id = int(self.get_company(row='max(company_id)')[0][0])
         else:
@@ -304,7 +304,7 @@ class ProjectDatabase(object):
 
     def remove_company(self, company):
         if company.id > 0:
-            self.c.execute("DELETE FROM company WHERE company_id = " + str(company.id))
+            self.c.execute("DELETE FROM company WHERE company_id = (?)", (str(company.id), ))
             self.conn.commit()
             self.remove_user(company.user)
             self.remove_address(company.address)
@@ -360,8 +360,8 @@ class ProjectDatabase(object):
 
     def remove_bill(self, bill):
         if bill.id > 0:
-            self.c.execute("DELETE FROM bill WHERE bill_id = " + str(bill.id))
-            self.c.execute("DELETE FROM product WHERE bill_id = " + str(bill.id))
+            self.c.execute("DELETE FROM bill WHERE bill_id = (?)", (str(bill.id),))
+            self.c.execute("DELETE FROM product WHERE bill_id = (?)", (str(bill.id),))
             self.conn.commit()
         else:
             print("ERROOOR REMOVE bill")
@@ -370,7 +370,7 @@ class ProjectDatabase(object):
         return self.get_object("product", row, join, condition, values)
 
     def add_product(self, product):
-        if product.id < 0 :
+        if product.id < 0:
             self.c.execute("INSERT INTO product(bill_id, description, amount, price_ht) VALUES (" +
                            product.__str__() + ")")
             self.conn.commit()
@@ -390,7 +390,7 @@ class ProjectDatabase(object):
 
     def remove_product(self, product):
         if product.bill.id > 0:
-            self.c.execute("DELETE FROM product WHERE product_id = " + str(product.id))
+            self.c.execute("DELETE FROM product WHERE product_id = (?)", (str(product.id),))
             self.conn.commit()
         else:
             print("ERROOOR REMOVE product")
