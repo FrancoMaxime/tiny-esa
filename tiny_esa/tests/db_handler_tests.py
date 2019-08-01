@@ -175,6 +175,7 @@ class MyTestCase(unittest.TestCase):
         self.db.update_bill(bill)
         sol = [(1, 1, 1, 'N/R', 'billing_date', 'DD', 'tva_rate', 'False', 'True')]
         tmp = self.db.get_bill()
+        print(tmp)
         for i in range(len(sol[0])):
             self.assertEqual(tmp[0][i], sol[0][i])
 
@@ -228,8 +229,6 @@ class MyTestCase(unittest.TestCase):
 
         self.db.add_customer(customer)
         tmp_c = self.db.customer_db_to_object(1)
-        print(tmp_c)
-        print("/n")
         self.assertEqual(tmp_c.id, 1)
         self.assertEqual(customer.evaluation, tmp_c.evaluation)
         self.assertEqual(tmp_c.person.id, 2)
@@ -269,6 +268,31 @@ class MyTestCase(unittest.TestCase):
             self.assertEqual(bill.products[tmp_b.products[k].description].description, tmp_b.products[k].description)
             self.assertEqual(bill.products[tmp_b.products[k].description].amount, tmp_b.products[k].amount)
             self.assertEqual(bill.products[tmp_b.products[k].description].price_ht, tmp_b.products[k].price_ht)
+
+    def test_sql_injection(self):
+        address = models.Address("\" OR 1=1", "number", "postal_code", "city")
+        self.db.add_address(address)
+        self.assertEqual(self.db.get_address(), [(1, '\" OR 1=1', 'number', 'postal_code', 'city')])
+        test_person = models.Person(address, "\" OR 1=1 \"", "first_name", "gsm", "phone", "mail", "12345", "remark")
+        test_person2 = models.Person(address, "\" OR 1=1 \"", "first_name", "gsm", "phone", "mail", "12345", "remark")
+        self.db.add_person(test_person)
+        self.assertEqual(self.db.get_person(),
+                         [(1, 1, '\" OR 1=1 \"', 'first_name', 'gsm', 'mail', 'phone', '12345', "remark")])
+
+        user = models.User(test_person2, "'OR 1=1 ;'")
+        self.db.add_user(user)
+        self.assertEqual(self.db.get_user(), [(1, 2, 'f10ffa9edec8c0e49474ef2a142b4380bf2c67dfc13d1d6c622126a538fa9c2c')])
+
+        customer = models.Customer(test_person, "'OR 1=1 ;'")
+        self.db.add_customer(customer)
+        self.assertEqual(self.db.get_customer(), [(1, 1, "'OR 1=1 ;'")])
+
+        bill = models.Bill(customer, user, "' OR 1=1;'", "billing_date", "due_date", "tva_rate")
+        self.db.add_bill(bill)
+        for i in range(5):
+            p = models.Product(bill, "description_"+str(i) + "' OR 1=1;'", i+1, 50.00)
+            self.db.add_product(p)
+            bill.add_product(p)
 
 
 if __name__ == '__main__':

@@ -281,7 +281,7 @@ class Customer(FrozenClass):
         self.__evaluation = value
 
     def __str__(self):
-        return str(self.person.id) + ", '" + self.evaluation.replace("'", "''") + "'"
+        return str(self.person.id) + ", '" + self.evaluation + "'"
 
     def is_sanitized(self):
         return FrozenClass.is_sanitized(self) and self.person.is_sanitized()
@@ -302,8 +302,8 @@ class Company(FrozenClass):
         self._freeze()
 
     def __str__(self):
-        return str(self.address.id) + ", " + str(self.user.id) + ", '" + self.gsm.replace("'", "''")  + "', '" + self.phone.replace("'", "''")  \
-               + "', '" + self.mail.replace("'", "''")  + "', '" + self.tva_number.replace("'", "''")  + "', '" + self.iban.replace("'", "''")  + "', '" + self.bic.replace("'", "''")  + "', '" \
+        return str(self.address.id) + ", " + str(self.user.id) + ", '" + self.gsm.replace("'", "''") + "', '" + self.phone.replace("'", "''")  \
+               + "', '" + self.mail.replace("'", "''") + "', '" + self.tva_number.replace("'", "''") + "', '" + self.iban.replace("'", "''") + "', '" + self.bic.replace("'", "''") + "', '" \
                + self.name.replace("'", "''") + "'"
 
     @property
@@ -399,7 +399,6 @@ class Bill(FrozenClass):
         self._freeze()
 
     def __str__(self):
-        print(self.invoiced)
         return str(self.customer.id) + ", " + str(self.user.id) + ", '" + str(self.num_ref) + "', '" + self.billing_date \
             + "', '" + self.due_date + "', '" + str(self.tva_rate) + "', '" + str(self.paid) + "', '" + \
             str(self.invoiced) + "'"

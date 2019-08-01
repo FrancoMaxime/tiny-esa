@@ -68,7 +68,8 @@ class ProjectDatabase(object):
                      FOREIGN KEY(user_id) REFERENCES user(user_id), 
                      FOREIGN KEY(customer_id) REFERENCES customer(customer_id))''')
                      
-        self.c.execute('''CREATE TABLE product(product_id INTEGER PRIMARY KEY autoincrement ,bill_id INTEGER NOT NULL, description text NOT NULL, amount INTEGER NOT NULL,
+        self.c.execute('''CREATE TABLE product(product_id INTEGER PRIMARY KEY autoincrement ,bill_id INTEGER NOT NULL, 
+                      description text NOT NULL, amount INTEGER NOT NULL,
                       price_HT REAL NOT NULL, FOREIGN KEY(bill_id) REFERENCES bill(bill_id))''')
         self.conn.commit()
         
@@ -87,8 +88,8 @@ class ProjectDatabase(object):
 
     def add_address(self, address):
         if address.id != 0:
-            self.c.execute("INSERT INTO address(street, number, postal_code,city) VALUES(" +
-                           address.__str__() + ")")
+            self.c.execute("INSERT INTO address(street, number, postal_code,city) VALUES(?, ? , ? , ?)",
+                           (address.street, address.number, address.postal_code, address.city))
             self.conn.commit()
             address.id = int(self.get_address(row='max(address_id)')[0][0])
         else:
@@ -100,10 +101,9 @@ class ProjectDatabase(object):
 
     def update_address(self, address):
         if address.id > 0:
-            self.c.execute("UPDATE address SET street = '" + address.street.replace("'", "''")+"', number = '" +
-                           address.number.replace("'", "''") + "', postal_code = '" +
-                           address.postal_code.replace("'", "''") + "', city = '" + address.city.replace("'", "''")
-                           + "' WHERE address_id = " + str(address.id))
+            self.c.execute("UPDATE address SET street = (?), number = (?), postal_code = (?), city =(?) WHERE "
+                           "address_id = (?)",
+                           (address.street, address.number, address.postal_code, address.city,address.id,))
             self.conn.commit()
         else:
             self.add_address(address)
@@ -111,13 +111,13 @@ class ProjectDatabase(object):
         
     def remove_address(self, address):
         if address.id > 0:
-            self.c.execute("DELETE FROM address WHERE address_id = (?)", (str(address.id), ))
+            self.c.execute("DELETE FROM address WHERE address_id = (?)", (str(address.id)))
             self.conn.commit()
         else:
             print("ERROOOOOR remove address sans ID")
 
     def address_db_to_object(self, address_id):
-        info = self.get_address(condition="address_id = (?)", values=( str(address_id),))
+        info = self.get_address(condition="address_id = (?)", values=(str(address_id)))
         tmp = None
         if len(info) > 0:
             tmp = models.Address(info[0][1], info[0][2], info[0][3], info[0][4])
@@ -125,11 +125,13 @@ class ProjectDatabase(object):
         return tmp
 
     def add_person(self, person):
-        if person.address.id < 0:
+        if person.address.id <= 0:
             self.add_address(person.address)
         if person.id < 0:
             self.c.execute("INSERT INTO person(address_id, last_name, first_name, gsm, phone, mail, timestamp,remark)"
-                           + " VALUES(" + person.__str__() + ")")
+                           + " VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
+                           (person.address.id, person.last_name, person.first_name, person.gsm, person.phone,
+                            person.mail, person.timestamp, person.remark))
             self.conn.commit()
             person.id = int(self.get_person(row='max(person_id)')[0][0])
         else:
@@ -138,7 +140,7 @@ class ProjectDatabase(object):
 
     def remove_person(self, person):
         if person.id > 0:
-            self.c.execute("DELETE FROM person WHERE person_id = (?)", (str(person.id), ))
+            self.c.execute("DELETE FROM person WHERE person_id = (?)", (str(person.id)))
             self.conn.commit()
             self.remove_address(person.address)
         else:
@@ -150,11 +152,10 @@ class ProjectDatabase(object):
     def update_person(self, person):
         if person.id > 0:
             self.update_address(person.address)
-            self.c.execute("UPDATE person SET first_name = '" + person.first_name.replace("'", "''")
-                           + "', last_name = '" + person.last_name.replace("'", "''") + "', gsm = '" +
-                           person.gsm.replace("'", "''") + "', phone = '" + person.phone.replace("'", "''") +
-                           "', mail = '" + person.mail.replace("'", "''") + "', timestamp ='" + person.timestamp +
-                           "', remark = '" + person.remark.replace("'", "''") + "' WHERE person_id = "+ str(person.id))
+            self.c.execute("UPDATE person SET first_name = (?), last_name = (?), gsm = (?), phone = (?), mail = (?),"
+                           "timestamp = (?), remark = (?) WHERE person_id = (?)",
+                           (person.first_name, person.last_name, person.gsm, person.phone, person.mail,
+                            person.timestamp, person.remark, person.id))
             self.conn.commit()
 
         else:
@@ -162,7 +163,7 @@ class ProjectDatabase(object):
             print("ERROOOOOR update person sans ID")
 
     def person_db_to_object(self, person_id):
-        info = self.get_person(condition="person_id =(?) ", values=(str(person_id),))
+        info = self.get_person(condition="person_id =(?) ", values=(str(person_id)))
         tmp = None
         if len(info) > 0:
             tmp_address = self.address_db_to_object(info[0][1])
@@ -184,10 +185,10 @@ class ProjectDatabase(object):
         return tmp
 
     def add_user(self, user):
-        if user.person.id < 0:
+        if user.person.id <= 0:
             self.add_person(user.person)
         if user.id < 0:
-            self.c.execute("INSERT INTO user(person_id, password) VALUES("+user.__str__() + ")")
+            self.c.execute("INSERT INTO user(person_id, password) VALUES(?, ?)", (str(user.person.id), user.password))
             self.conn.commit()
             user.id = int(self.get_user(row='max(user_id)')[0][0])
         else:
@@ -200,8 +201,8 @@ class ProjectDatabase(object):
     def update_user(self, user):
         if user.id > 0:
             self.update_person(user.person)
-            self.c.execute("UPDATE user SET person_id = '" + str(user.person.id) + "', password = '"
-                           + user.password + "' WHERE user_id = " + str(user.id))
+            self.c.execute("UPDATE user SET person_id = (?), password = (?) WHERE user_id = (?) ",
+                           (user.person.id, user.password, user.id))
             self.conn.commit()
         else:
             self.add_user(user)
@@ -209,17 +210,18 @@ class ProjectDatabase(object):
 
     def remove_user(self, user):
         if user.id > 0:
-            self.c.execute("DELETE FROM user WHERE user_id = (?)", (str(user.id), ))
+            self.c.execute("DELETE FROM user WHERE user_id = (?)", (str(user.id)))
             self.conn.commit()
             self.remove_person(user.person)
         else:
             print("EROOOR remove user")
 
     def add_customer(self, customer):
-        if customer.person.id < 0:
+        if customer.person.id <= 0:
             self.add_person(customer.person)
         if customer.id < 0:
-            self.c.execute("INSERT INTO customer(person_id, evaluation) VALUES(" + customer.__str__() + ")")
+            self.c.execute("INSERT INTO customer(person_id, evaluation) VALUES(?,?)",
+                           (str(customer.person.id), customer.evaluation))
             self.conn.commit()
             customer.id = int(self.get_customer(row='max(customer_id)')[0][0])
         else:
@@ -227,7 +229,7 @@ class ProjectDatabase(object):
             print("Error add Customer")
 
     def customer_db_to_object(self, customer_id):
-        info = self.get_customer(condition="customer_id = (?)", values=(str(customer_id),))
+        info = self.get_customer(condition="customer_id = (?)", values=(str(customer_id)))
         tmp = None
         if len(info) > 0:
             tmp_p = self.person_db_to_object(info[0][1])
@@ -243,9 +245,8 @@ class ProjectDatabase(object):
     def update_customer(self, customer):
         if customer.id > 0:
             self.update_person(customer.person)
-            self.c.execute("UPDATE customer SET person_id = " + str(customer.person.id)
-                           + ", evaluation = '" + customer.evaluation.replace("'", "''") +
-                           "' WHERE customer_id = " + str(customer.id))
+            self.c.execute("UPDATE customer SET person_id = (?), evaluation = (?) WHERE customer_id =(?)",
+                           (str(customer.person.id), customer.evaluation, customer.id))
             self.conn.commit()
         else:
             self.add_customer(customer)
@@ -253,14 +254,14 @@ class ProjectDatabase(object):
 
     def remove_customer(self, customer):
         if customer.id > 0:
-            self.c.execute("DELETE FROM customer WHERE customer_id = (?)", (str(customer.id), ))
+            self.c.execute("DELETE FROM customer WHERE customer_id = (?)", (str(customer.id)))
             self.conn.commit()
             self.remove_person(customer.person)
         else:
             print("EROOOR remove customer")
 
     def company_db_to_object(self, company_id=1):
-        info = self.get_company(condition="company_id = (?)", values=(str(company_id),))
+        info = self.get_company(condition="company_id = (?)", values=(str(company_id)))
         tmp = None
         if len(info) > 0:
             tmp_u = self.user_db_to_object(info[0][2])
@@ -271,13 +272,15 @@ class ProjectDatabase(object):
         return tmp
 
     def add_company(self, company):
-        if company.id < 0:
+        if company.id <= 0:
             self.add_address(company.address)
-        if company.user.id < 0:
+        if company.user.id <= 0:
             self.add_user(company.user)
-        if company.id < 0:
+        if company.id <= 0:
             self.c.execute("INSERT INTO company(address_id, user_id, gsm,phone, mail, tva_number, iban, bic, name) "
-                           + "VALUES (" + company.__str__() + ")")
+                           + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           (str(company.address.id), company.user.id, company.gsm, company.phone, company.mail,
+                            company.tva_number, company.iban, company.bic, company.name))
             self.conn.commit()
             company.id = int(self.get_company(row='max(company_id)')[0][0])
         else:
@@ -291,12 +294,10 @@ class ProjectDatabase(object):
         if company.id > 0:
             self.update_address(company.address)
             self.update_user(company.user)
-            self.c.execute("UPDATE company SET address_id = " + str(company.address.id) + ", user_id = "
-                           + str(company.user.id) + ", gsm = '" + company.gsm.replace("'", "''") + "', phone = '" +
-                           company.phone.replace("'", "''") + "', mail = '" + company.mail.replace("'", "''") +
-                           "', tva_number = '" + company.tva_number.replace("'", "''") + "', iban = '" +
-                           company.iban.replace("'", "''") + "', bic = '" + company.bic.replace("'", "''") +
-                           "', name = '" + company.name.replace("'", "''") + "'")
+            self.c.execute("UPDATE company SET address_id = (?), user_id = (?), gsm = (?), phone = (?), mail = (?),"
+                           " tva_number = (?), iban = (?), bic = (?), name = (?)",
+                           (str(company.address.id), company.user.id, company.gsm, company.phone, company.mail,
+                            company.tva_number, company.iban, company.bic, company.name))
             self.conn.commit()
         else:
             self.add_company(company)
@@ -304,7 +305,7 @@ class ProjectDatabase(object):
 
     def remove_company(self, company):
         if company.id > 0:
-            self.c.execute("DELETE FROM company WHERE company_id = (?)", (str(company.id), ))
+            self.c.execute("DELETE FROM company WHERE company_id = (?)", (str(company.id)))
             self.conn.commit()
             self.remove_user(company.user)
             self.remove_address(company.address)
@@ -320,7 +321,9 @@ class ProjectDatabase(object):
             self.add_customer(bill.customer)
             self.add_user(bill.user)
             self.c.execute("INSERT INTO bill(customer_id, user_id, num_ref, billing_date, due_date, tva_rate, paid, " +
-                           "invoiced) VALUES (" + bill.__str__() + ")")
+                           "invoiced) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                           (str(bill.customer.id), str(bill.user.id), bill.num_ref, bill.billing_date,
+                            bill.due_date, bill.tva_rate, str(bill.paid), str(bill.invoiced)))
             bill.id = int(self.get_bill(row='max(bill_id)')[0][0])
             for product in bill.products.values():
                 self.add_product(product)
@@ -329,14 +332,14 @@ class ProjectDatabase(object):
             self.update_bill(bill)
 
     def bill_db_to_object(self, bill_id):
-        info = self.get_bill(condition="bill_id = (?)", values=(str(bill_id),))
+        info = self.get_bill(condition="bill_id = (?)", values=(str(bill_id)))
         tmp = None
         if len(info) > 0:
             tmp_c = self.customer_db_to_object(info[0][1])
             tmp_u = self.user_db_to_object(info[0][2])
             tmp = models.Bill(tmp_c, tmp_u, info[0][3], info[0][4], info[0][5], info[0][6], info[0][7], info[0][8])
             tmp.id = info[0][0]
-            inf = self.get_product(condition="bill_id = " + str(bill_id))
+            inf = self.get_product(condition="bill_id = (?)", values=str(bill_id))
             for i in inf:
                 tmp.add_product(self.product_db_to_object(i[0], tmp))
         return tmp
@@ -345,12 +348,10 @@ class ProjectDatabase(object):
         if bill.id > 0:
             self.update_customer(bill.customer)
             self.update_user(bill.user)
-            self.c.execute("UPDATE bill SET customer_id = " + str(bill.customer.id) + ", user_id = "
-                           + str(bill.user.id) + ", num_ref = '" + bill.num_ref.replace("'", "''") +
-                           "', billing_date = '" + bill.billing_date.replace("'", "''") + "', due_date = '" +
-                           bill.due_date.replace("'", "''") + "', tva_rate = '" + str(bill.tva_rate).replace("'", "''") +
-                           "', paid = '" + str(bill.paid) + "', invoiced = '" + str(bill.invoiced) +
-                           "' WHERE bill_id = " + str(bill.id))
+            self.c.execute("UPDATE bill SET customer_id = (?), user_id = (?), num_ref = (?), billing_date = (?), "
+                           "due_date = (?), tva_rate = (?), paid = (?), invoiced = (?) WHERE bill_id = (?)",
+                           (str(bill.customer.id), str(bill.user.id), bill.num_ref, bill.billing_date,
+                           bill.due_date, bill.tva_rate, str(bill.paid), str(bill.invoiced), str(bill.id)))
             for product in bill.products.values():
                 self.update_product(product)
             self.conn.commit()
@@ -360,8 +361,8 @@ class ProjectDatabase(object):
 
     def remove_bill(self, bill):
         if bill.id > 0:
-            self.c.execute("DELETE FROM bill WHERE bill_id = (?)", (str(bill.id),))
-            self.c.execute("DELETE FROM product WHERE bill_id = (?)", (str(bill.id),))
+            self.c.execute("DELETE FROM bill WHERE bill_id = (?)", (str(bill.id)))
+            self.c.execute("DELETE FROM product WHERE bill_id = (?)", (str(bill.id)))
             self.conn.commit()
         else:
             print("ERROOOR REMOVE bill")
@@ -370,9 +371,11 @@ class ProjectDatabase(object):
         return self.get_object("product", row, join, condition, values)
 
     def add_product(self, product):
-        if product.id < 0:
-            self.c.execute("INSERT INTO product(bill_id, description, amount, price_ht) VALUES (" +
-                           product.__str__() + ")")
+        if product.id <= 0:
+            if product.bill.id <= 0:
+                self.add_bill(product.bill)
+            self.c.execute("INSERT INTO product(bill_id, description, amount, price_ht) VALUES (?, ?, ?, ?)",
+                           (str(product.bill.id), product.description, product.amount, product.price_ht))
             self.conn.commit()
             product.id = int(self.get_product(row='max(product_id)')[0][0])
         else:
@@ -380,9 +383,8 @@ class ProjectDatabase(object):
 
     def update_product(self, product):
         if product.id > 0:
-            self.c.execute("UPDATE product SET description = '" + product.description.replace("'", "''")
-                           + "', amount = " + str(product.amount) + ", price_ht = " + str(product.price_ht) +
-                           " WHERE product_id = " + str(product.id))
+            self.c.execute("UPDATE product SET description = (?), amount = (?), price_ht = (?) WHERE product_id = (?)",
+                           (product.description, product.amount, product.price_ht, product.id))
             self.conn.commit()
         else:
             self.add_product(product)
@@ -390,13 +392,13 @@ class ProjectDatabase(object):
 
     def remove_product(self, product):
         if product.bill.id > 0:
-            self.c.execute("DELETE FROM product WHERE product_id = (?)", (str(product.id),))
+            self.c.execute("DELETE FROM product WHERE product_id = (?)", (str(product.id)))
             self.conn.commit()
         else:
             print("ERROOOR REMOVE product")
 
     def product_db_to_object(self, product_id, bill):
-        info = self.get_product(condition="product_id = (?)", values=(str(product_id),))
+        info = self.get_product(condition="product_id = (?)", values=(str(product_id)))
         tmp = None
         if len(info) > 0 and bill.id == info[0][1]:
             tmp = models.Product(bill, info[0][2], info[0][3], info[0][4])
